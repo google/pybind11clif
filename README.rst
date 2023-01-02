@@ -4,7 +4,7 @@ pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
 
 **WARNING**
 
-**CONSTRUCTION ZONE**
+**CONSTRUCTION ZONE WITH SQUASHED COMMITS NOT FOR MERGING**
 
 We may force push to this repo until this notice is removed: DO NOT use this repo as a basis for your work until this notice is removed.
 
