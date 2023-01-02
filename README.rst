@@ -2,20 +2,28 @@
 pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
 ==========================================================================
 
+**WARNING**
+
+**CONSTRUCTION ZONE**
+
+We may force push to this repo until this notice is removed: DO NOT use this repo as a basis for your work until this notice is removed.
+
+________
+
 This pywrapcc repo originated from the `pybind11 smart_holder <https://github.com/pybind/pybind11/tree/smart_holder>`_ branch. It was created with two important goals in mind:
 
 1. Sustained innovation and proactive bug fixes.
 2. Sustained continuity.
 
-With orignal pybind11, these two goals are in a conflict. In the early days of pybind11 this was not so much of a problem, but this has been changing with growing adoption.
+With original pybind11, these two goals are in a conflict. In the early days of pybind11 this was not so much of a problem, but this has been changing with growing adoption.
 
 Regarding goal 1: pybind11 has two serious long-standing bugs (pybind/pybind11#1138, pybind/pybind11#1333) that have never been fixed on the master branch, but were fixed on the smart_holder branch in early-mid 2021.
 
 Regarding goal 2: The original and still current ``pybind11::smart_holder`` implementation is a compromise solution that avoids an `"ABI break" <https://github.com/pybind/pybind11/blob/09db6445d8da6e918c2d2be3aa4e7b0ddd8077c7/include/pybind11/detail/internals.h#L25>`_, concretely, changes to the ``pybind11::details::internals`` ``struct``. Each time the ``internals`` are changed, the ``PYBIND11_INTERNALS_VERSION`` needs to be incremented, cutting off interoperability with existing PyPI wheels based on pybind11, without giving any hint about this problem at runtime. In the meantime, two other PRs were merged on the pybind11 master branch that require changes to the ``internals``, PRs pybind/pybind11#3275 and pybind/pybind11#4254. To avoid ABI breaks, these PRs were effectively held back behind ``#ifdef`` s. This problem came to a breaking point with PR pybind/pybind11#4329, for which hiding the new feature behind ``#ifdef`` s is not a practical option.
 
-Obviously, neither repeatedly breaking interoperability with existing PyPI wheels, nor holding back bug fixes and new features, is desireable. Therefore PR pybind/pybind11#4329 was extended to include a generalization of the ``internals`` approach, under the name ``cross_extension_shared_state``. The fundamental difference is that established shared state is left untouched, and new shared states are added as needed, largely resolving the conflict between innovation & continuity. The price to pay is added complexity managing the evolving shared states, but that is assumed to be a relatively small extra effort for a few developers, resulting in a big usability gain for a much larger number of users. Ultimately, this is just the familiar innovate-deprecate-cleanup life cycle typical for many (all?) long-term successful major projects (e.g. C++, Python). Even pywrapcc developers are likely to see this as a win worth paying a price for, because they are more free to innovate.
+Obviously, neither repeatedly breaking interoperability with existing PyPI wheels, nor holding back bug fixes and new features, is desirable. Therefore PR pybind/pybind11#4329 was extended to include a generalization of the ``internals`` approach, under the name ``cross_extension_shared_state``. The fundamental difference is that established shared state is left untouched, and new shared states are added as needed, largely resolving the conflict between innovation & continuity. The price to pay is added complexity managing the evolving shared states, but that is assumed to be a relatively small extra effort for a few developers, resulting in a big usability gain for a much larger number of users. Ultimately, this is just the familiar innovate-deprecate-cleanup life cycle typical for many (all?) long-term successful major projects (e.g. C++, Python). Even pywrapcc developers are likely to see this as a win worth paying a price for, because they are more free to innovate.
 
-A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs, more than arbitray "let's change some names" decisions. ABI compatibility will be phased out gradually, on time scales similar to Python EOL policies. Eventually there may be little or no "pybind11" left in pywrapcc, but this will certainly take some time.
+A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs, more than arbitrary "let's change some names" decisions. ABI compatibility will be phased out gradually, on time scales similar to Python EOL policies. Eventually there may be little or no "pybind11" left in pywrapcc, but this will certainly take some time.
 
 ________
 
