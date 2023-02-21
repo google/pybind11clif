@@ -9,6 +9,12 @@ from pybind11_tests import detailed_error_messages_enabled
 from pybind11_tests import pytypes as m
 
 
+def test_obj_class_name():
+    assert m.obj_class_name(None) == "NoneType"
+    assert m.obj_class_name(list) == "list"
+    assert m.obj_class_name([]) == "list"
+
+
 def test_handle_from_move_only_type_with_operator_PyObject():  # noqa: N802
     assert m.handle_from_move_only_type_with_operator_PyObject_ncnst()
     assert m.handle_from_move_only_type_with_operator_PyObject_const()
@@ -530,7 +536,7 @@ def test_print(capture):
     assert str(excinfo.value) == "Unable to convert call argument " + (
         "'1' of type 'UnregisteredType' to Python object"
         if detailed_error_messages_enabled
-        else "to Python object (#define PYBIND11_DETAILED_ERROR_MESSAGES or compile in debug mode for details)"
+        else "'1' to Python object (#define PYBIND11_DETAILED_ERROR_MESSAGES or compile in debug mode for details)"
     )
 
 
