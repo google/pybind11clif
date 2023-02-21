@@ -6,17 +6,17 @@ np = pytest.importorskip("numpy")
 eigen_tensor = pytest.importorskip("pybind11_tests.eigen_tensor")
 submodules = [eigen_tensor.c_style, eigen_tensor.f_style]
 try:
-    from pybind11_tests import eigen_tensor_avoid_stl_array as avoid
+    import eigen_tensor_avoid_stl_array as avoid
 
     submodules += [avoid.c_style, avoid.f_style]
 except ImportError as e:
     # Ensure config, build, toolchain, etc. issues are not masked here:
     raise RuntimeError(
-        "import pybind11_tests.eigen_tensor_avoid_stl_array FAILED, while "
+        "import eigen_tensor_avoid_stl_array FAILED, while "
         "import pybind11_tests.eigen_tensor succeeded. "
         "Please ensure that "
         "test_eigen_tensor.cpp & "
-        "test_eigen_tensor_avoid_stl_array.cpp "
+        "eigen_tensor_avoid_stl_array.cpp "
         "are built together (or both are not built if Eigen is not available)."
     ) from e
 
@@ -42,7 +42,7 @@ def cleanup():
 
 
 def test_import_avoid_stl_array():
-    pytest.importorskip("pybind11_tests.eigen_tensor_avoid_stl_array")
+    pytest.importorskip("eigen_tensor_avoid_stl_array")
     assert len(submodules) == 4
 
 
@@ -59,7 +59,6 @@ def assert_equal_tensor_ref(mat, writeable=True, modified=None):
 @pytest.mark.parametrize("m", submodules)
 @pytest.mark.parametrize("member_name", ["member", "member_view"])
 def test_reference_internal(m, member_name):
-
     if not hasattr(sys, "getrefcount"):
         pytest.skip("No reference counting")
     foo = m.CustomExample()
@@ -108,7 +107,6 @@ def test_convert_tensor_to_py(m, func_name):
 
 @pytest.mark.parametrize("m", submodules)
 def test_bad_cpp_to_python_casts(m):
-
     with pytest.raises(
         RuntimeError, match="Cannot use reference internal when there is no parent"
     ):
@@ -131,7 +129,6 @@ def test_bad_cpp_to_python_casts(m):
 
 @pytest.mark.parametrize("m", submodules)
 def test_bad_python_to_cpp_casts(m):
-
     with pytest.raises(
         TypeError, match=r"^round_trip_tensor\(\): incompatible function arguments"
     ):
@@ -194,7 +191,6 @@ def test_bad_python_to_cpp_casts(m):
 
 @pytest.mark.parametrize("m", submodules)
 def test_references_actually_refer(m):
-
     a = m.reference_tensor()
     temp = a[indices]
     a[indices] = 100
@@ -211,7 +207,6 @@ def test_references_actually_refer(m):
 
 @pytest.mark.parametrize("m", submodules)
 def test_round_trip(m):
-
     assert_equal_tensor_ref(m.round_trip_tensor(tensor_ref))
 
     with pytest.raises(TypeError, match="^Cannot cast array data from"):
@@ -260,7 +255,6 @@ def test_round_trip(m):
 
 @pytest.mark.parametrize("m", submodules)
 def test_round_trip_references_actually_refer(m):
-
     # Need to create a copy that matches the type on the C side
     copy = np.array(tensor_ref, dtype=np.float64, order=m.needed_options)
     a = m.round_trip_view_tensor(copy)
