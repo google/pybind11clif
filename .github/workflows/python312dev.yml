@@ -69,6 +69,7 @@ jobs:
     # python-3.12.0-alpha.1-linux-22.04-x64.tar.gz  PASSED
     # python-3.12.0-alpha.2-linux-22.04-x64.tar.gz  FAILED
     # python-3.12.0-alpha.3-linux-22.04-x64.tar.gz  FAILED
+    # python-3.12.0-alpha.6-linux-22.04-x64.tar.gz  FAILED
     #     free(): invalid pointer
     #     Custom PyConfig
     #     /home/runner/work/pybind11/pybind11/tests/test_embed/test_interpreter.cpp:175
