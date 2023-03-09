@@ -492,7 +492,6 @@ struct error_fetch_and_normalize {
                             "of the original active exception type.");
         }
         m_lazy_error_string = exc_type_name_orig;
-  printf("\nLOOOK exc_type_name_orig=%s %s:%d\n", exc_type_name_orig, __FILE__, __LINE__); fflush(stdout);
         // PyErr_NormalizeException() may change the exception type if there are cascading
         // failures. This can potentially be extremely confusing.
         PyErr_NormalizeException(&m_type.ptr(), &m_value.ptr(), &m_trace.ptr());
@@ -507,7 +506,6 @@ struct error_fetch_and_normalize {
                           + " failed to obtain the name "
                             "of the normalized active exception type.");
         }
-  printf("\nLOOOK exc_type_name_norm=%s %s:%d\n", exc_type_name_norm, __FILE__, __LINE__); fflush(stdout);
 #if defined(PYPY_VERSION_NUM) && PYPY_VERSION_NUM < 0x07030a00
         // This behavior runs the risk of masking errors in the error handling, but avoids a
         // conflict with PyPy, which relies on the normalization here to change OSError to
