@@ -33,13 +33,12 @@ env:
   # For cmake:
   VERBOSE: 1
 
+# Hint: Select the label in the PR web view.
+if: "!contains(github.event.pull_request.labels.*.name, 'gha_wf_ci_disable')"
 jobs:
   # This is the "main" test suite, which tests a large number of different
   # versions of default compilers and Python versions in GitHub Actions.
   standard:
-    # Hint: Select the label in the PR web view.
-    if: "!contains(github.event.pull_request.labels.*.name, 'gha_wf_ci_disable')"
-
     strategy:
       fail-fast: false
       matrix:
