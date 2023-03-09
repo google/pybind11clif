@@ -43,21 +43,21 @@ MEMBER_DOC_MEMBERS = (
 
 
 @pytest.mark.parametrize(
-    "enum_type", (m.smallenum, m.color, m.altitude, m.export_values, m.member_doc)
+    "enum_type", [m.smallenum, m.color, m.altitude, m.export_values, m.member_doc]
 )
 def test_enum_type(enum_type):
     assert isinstance(enum_type, enum.EnumMeta)
 
 
 @pytest.mark.parametrize(
-    "enum_type,members",
-    (
+    ("enum_type", "members"),
+    [
         (m.smallenum, SMALLENUM_MEMBERS),
         (m.color, COLOR_MEMBERS),
         (m.altitude, ALTITUDE_MEMBERS),
         (m.export_values, EXPORT_VALUES_MEMBERS),
         (m.member_doc, MEMBER_DOC_MEMBERS),
-    ),
+    ],
 )
 def test_enum_members(enum_type, members):
     for name, value in members:
@@ -137,7 +137,7 @@ def test_native_enum_data_was_not_added_error_message():
 
 
 @pytest.mark.parametrize(
-    "func", (m.native_enum_ctor_malformed_utf8, m.native_enum_value_malformed_utf8)
+    "func", [m.native_enum_ctor_malformed_utf8, m.native_enum_value_malformed_utf8]
 )
 def test_native_enum_malformed_utf8(func):
     malformed_utf8 = b"\x80"
