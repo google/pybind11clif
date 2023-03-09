@@ -16,8 +16,8 @@ jobs:
     name: "🐍 3.12-dev • ubuntu-latest • x64"
     runs-on: ubuntu-latest
 
-    # Hint: Select the 'python312dev' label in the PR web view.
-    if: "contains(github.event.pull_request.labels.*.name, 'python312dev')"
+    # Hint: Select the label in the PR web view.
+    if: "contains(github.event.pull_request.labels.*.name, 'gha_wf_python312dev_enable')"
 
     steps:
     - name: Show env
