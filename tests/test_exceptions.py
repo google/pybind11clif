@@ -292,6 +292,7 @@ def test_error_already_set_message_with_malformed_utf8():
 class FlakyException(Exception):
     def __init__(self, failure_point):
         if failure_point == "failure_point_init":
+            print("\nLOOOK FlakyException failure_point_init", flush=True)
             raise ValueError("triggered_failure_point_init")
         self.failure_point = failure_point
 
@@ -319,6 +320,8 @@ def test_error_already_set_what_with_happy_exceptions(
 
 @pytest.mark.skipif("env.PYPY", reason="PyErr_NormalizeException Segmentation fault")
 def test_flaky_exception_failure_point_init():
+    tup = m.error_already_set_what(FlakyException, ("failure_point_init",))
+    print("\nLOOOK tup", tup, flush=True)
     with pytest.raises(RuntimeError) as excinfo:
         m.error_already_set_what(FlakyException, ("failure_point_init",))
     lines = str(excinfo.value).splitlines()
