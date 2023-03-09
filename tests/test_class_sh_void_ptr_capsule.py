@@ -7,7 +7,7 @@ class Valid:
     def __init__(self):
         self.capsule_generated = False
 
-    def as_pybind11_tests_class_sh_void_ptr_capsule_Valid(self):  # noqa: N802
+    def as_pybind11_tests_class_sh_void_ptr_capsule_Valid(self):
         self.capsule_generated = True
         return m.create_test_void_ptr_capsule()
 
@@ -21,7 +21,7 @@ class NoCapsuleReturned:
     def __init__(self):
         self.capsule_generated = False
 
-    def as_pybind11_tests_class_sh_void_ptr_capsule_NoCapsuleReturned(  # noqa: N802
+    def as_pybind11_tests_class_sh_void_ptr_capsule_NoCapsuleReturned(
         self,
     ):
         pass
@@ -31,42 +31,40 @@ class AsAnotherObject:
     def __init__(self):
         self.capsule_generated = False
 
-    def as_pybind11_tests_class_sh_void_ptr_capsule_Valid(self):  # noqa: N802
+    def as_pybind11_tests_class_sh_void_ptr_capsule_Valid(self):
         self.capsule_generated = True
         return m.create_test_void_ptr_capsule()
 
 
 @pytest.mark.parametrize(
-    "ctor, caller, expected, capsule_generated",
+    ("ctor", "caller", "expected"),
     [
-        (Valid, m.get_from_valid_capsule, 1, True),
-        (AsAnotherObject, m.get_from_valid_capsule, 1, True),
+        (Valid, m.get_from_valid_capsule, 1),
+        (AsAnotherObject, m.get_from_valid_capsule, 1),
     ],
 )
-def test_valid_as_void_ptr_capsule_function(ctor, caller, expected, capsule_generated):
+def test_valid_as_void_ptr_capsule_function(ctor, caller, expected):
     obj = ctor()
     assert caller(obj) == expected
-    assert obj.capsule_generated == capsule_generated
+    assert obj.capsule_generated
 
 
 @pytest.mark.parametrize(
-    "ctor, caller, expected, capsule_generated",
+    ("ctor", "caller"),
     [
-        (NoConversion, m.get_from_no_conversion_capsule, 2, False),
-        (NoCapsuleReturned, m.get_from_no_capsule_returned, 3, False),
+        (NoConversion, m.get_from_no_conversion_capsule),
+        (NoCapsuleReturned, m.get_from_no_capsule_returned),
     ],
 )
-def test_invalid_as_void_ptr_capsule_function(
-    ctor, caller, expected, capsule_generated
-):
+def test_invalid_as_void_ptr_capsule_function(ctor, caller):
     obj = ctor()
     with pytest.raises(TypeError):
         caller(obj)
-    assert obj.capsule_generated == capsule_generated
+    assert not obj.capsule_generated
 
 
 @pytest.mark.parametrize(
-    "ctor, caller, pointer_type, capsule_generated",
+    ("ctor", "caller", "pointer_type", "capsule_generated"),
     [
         (AsAnotherObject, m.get_from_shared_ptr_valid_capsule, "shared_ptr", True),
         (AsAnotherObject, m.get_from_unique_ptr_valid_capsule, "unique_ptr", True),

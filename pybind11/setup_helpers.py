@@ -175,7 +175,7 @@ class Pybind11Extension(_Extension):  # type: ignore[misc]
     def cxx_std(self, level: int) -> None:
         if self._cxx_level:
             warnings.warn(
-                "You cannot safely change the cxx_level after setting it!", stacklevel=1
+                "You cannot safely change the cxx_level after setting it!", stacklevel=2
             )
 
         # MSVC 2015 Update 3 and later only have 14 (and later 17) modes, so
@@ -341,7 +341,7 @@ def naive_recompile(obj: str, src: str) -> bool:
     return os.stat(obj).st_mtime < os.stat(src).st_mtime
 
 
-def no_recompile(obg: str, src: str) -> bool:  # pylint: disable=unused-argument
+def no_recompile(obg: str, src: str) -> bool:  # noqa: ARG001
     """
     This is the safest but slowest choice (and is the default) - will always
     recompile sources.
