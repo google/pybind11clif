@@ -316,6 +316,15 @@ inline void translate_local_exception(std::exception_ptr p) {
 }
 #endif
 
+inline internals **get_internals_retrieve_from_capsule(PyObject *cap, const char *id_cstr) {
+    void *raw_ptr = PyCapsule_GetPointer(cap, id_cstr);
+    if (raw_ptr == nullptr) {
+        raise_from(PyExc_SystemError,
+                   "Retrieve pybind11::detail::internals** from capsule FAILED");
+    }
+    return static_cast<internals **>(raw_ptr);
+}
+
 /// Return a reference to the current `internals` data
 PYBIND11_NOINLINE internals &get_internals() {
     internals **&internals_pp = get_internals_pp();
@@ -331,14 +340,8 @@ PYBIND11_NOINLINE internals &get_internals() {
 
     dict state_dict = get_python_state_dict();
 
-    if (state_dict.contains(id_cstr)) {
-        void *raw_ptr = PyCapsule_GetPointer(state_dict[id].ptr(), id_cstr);
-        if (raw_ptr == nullptr) {
-            raise_from(
-                PyExc_SystemError,
-                "pybind11::detail::get_internals(): Retrieve internals** from capsule FAILED");
-        }
-        internals_pp = static_cast<internals **>(raw_ptr);
+    if (state_dict.contains(id)) {
+        internals_pp = get_internals_retrieve_from_capsule(state_dict[id].ptr(), id_cstr);
     }
 
     if (internals_pp && *internals_pp) {
