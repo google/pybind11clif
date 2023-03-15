@@ -316,11 +316,14 @@ inline void translate_local_exception(std::exception_ptr p) {
 }
 #endif
 
-inline internals **get_internals_retrieve_from_capsule(PyObject *cap, const char *id_cstr) {
-    void *raw_ptr = PyCapsule_GetPointer(cap, id_cstr);
+inline object get_internals_obj_from_state_dict(handle state_dict) {
+    return reinterpret_borrow<object>(dict_getitemstring(state_dict.ptr(), PYBIND11_INTERNALS_ID));
+}
+
+inline internals **get_internals_pp_from_capsule(handle obj) {
+    void *raw_ptr = PyCapsule_GetPointer(obj.ptr(), /*name=*/nullptr);
     if (raw_ptr == nullptr) {
-        raise_from(PyExc_SystemError,
-                   "Retrieve pybind11::detail::internals** from capsule FAILED");
+        raise_from(PyExc_SystemError, "pybind11::detail::get_internals_pp_from_capsule() FAILED");
     }
     return static_cast<internals **>(raw_ptr);
 }
@@ -335,17 +338,12 @@ PYBIND11_NOINLINE internals &get_internals() {
     gil_scoped_acquire_simple gil;
     error_scope err_scope;
 
-    constexpr const char *id_cstr = PYBIND11_INTERNALS_ID;
-    str id(id_cstr);
-
     dict state_dict = get_python_state_dict();
-
-    if (state_dict.contains(id)) {
-        internals_pp = get_internals_retrieve_from_capsule(state_dict[id].ptr(), id_cstr);
+    if (object internals_obj = get_internals_obj_from_state_dict(state_dict)) {
+        internals_pp = get_internals_pp_from_capsule(internals_obj);
     }
-
     if (internals_pp && *internals_pp) {
-        // We loaded builtins through python's builtins, which means that our `error_already_set`
+        // We loaded the internals through `state_dict`, which means that our `error_already_set`
         // and `builtin_exception` may be different local classes than the ones set up in the
         // initial exception translator, below, so add another for our local exception classes.
         //
@@ -379,7 +377,7 @@ PYBIND11_NOINLINE internals &get_internals() {
 #    endif
         internals_ptr->istate = tstate->interp;
 #endif
-        state_dict[id] = capsule(internals_pp, id_cstr);
+        state_dict[PYBIND11_INTERNALS_ID] = capsule(internals_pp);
         internals_ptr->registered_exception_translators.push_front(&translate_exception);
         internals_ptr->static_property_type = make_static_property_type();
         internals_ptr->default_metaclass = make_default_metaclass();
