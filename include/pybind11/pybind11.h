@@ -12,7 +12,6 @@
 
 #include "detail/class.h"
 #include "detail/init.h"
-#include "detail/native_enum_data.h"
 #include "detail/smart_holder_sfinae_hooks_only.h"
 #include "attr.h"
 #include "gil.h"
@@ -1269,11 +1268,6 @@ public:
         //       For Python 2, reinterpret_borrow was correct.
         return reinterpret_borrow<module_>(m);
     }
-
-    module_ &operator+=(const detail::native_enum_data &data) {
-        detail::native_enum_add_to_parent(*this, data);
-        return *this;
-    }
 };
 
 // When inside a namespace (or anywhere as long as it's not the first item on a line),
@@ -1748,17 +1742,11 @@ public:
                       " missing PYBIND11_SMART_HOLDER_TYPE_CASTERS(T)?");
 #ifdef PYBIND11_STRICT_ASSERTS_CLASS_HOLDER_VS_TYPE_CASTER_MIX
         // Strict conditions cannot be enforced universally at the moment (PR #2836).
-        static_assert(holder_is_smart_holder
-                          == (wrapped_type_uses_smart_holder_type_caster
-                              || (detail::type_uses_type_caster_enum_type<type>::value
-                                  && detail::smart_holder_is_default_holder_type)),
+        static_assert(holder_is_smart_holder == wrapped_type_uses_smart_holder_type_caster,
                       "py::class_ holder vs type_caster mismatch:"
                       " missing PYBIND11_SMART_HOLDER_TYPE_CASTERS(T)"
                       " or collision with custom py::detail::type_caster<T>?");
-        static_assert(!holder_is_smart_holder
-                          == (type_caster_type_is_type_caster_base_subtype
-                              || (detail::type_uses_type_caster_enum_type<type>::value
-                                  && !detail::smart_holder_is_default_holder_type)),
+        static_assert(!holder_is_smart_holder == type_caster_type_is_type_caster_base_subtype,
                       "py::class_ holder vs type_caster mismatch:"
                       " missing PYBIND11_TYPE_CASTER_BASE_HOLDER(T, ...)"
                       " or collision with custom py::detail::type_caster<T>?");
@@ -2042,11 +2030,6 @@ public:
         return *this;
     }
 
-    class_ &operator+=(const detail::native_enum_data &data) {
-        detail::native_enum_add_to_parent(*this, data);
-        return *this;
-    }
-
 private:
     template <typename T = type,
               detail::enable_if_t<!detail::type_uses_smart_holder_type_caster<T>::value, int> = 0>
@@ -2057,8 +2040,7 @@ private:
     template <typename T = type,
               detail::enable_if_t<detail::type_uses_smart_holder_type_caster<T>::value, int> = 0>
     void generic_type_initialize(const detail::type_record &record) {
-        generic_type::initialize(
-            record, detail::type_caster_classh_enum_aware<T>::get_local_load_function_ptr());
+        generic_type::initialize(record, detail::type_caster<T>::get_local_load_function_ptr());
     }
 
     /// Initialize holder object, variant 1: object derives from enable_shared_from_this
@@ -2129,8 +2111,7 @@ private:
               typename A = type_alias,
               detail::enable_if_t<detail::type_uses_smart_holder_type_caster<T>::value, int> = 0>
     static void init_instance(detail::instance *inst, const void *holder_ptr) {
-        detail::type_caster_classh_enum_aware<T>::template init_instance_for_type<T, A>(
-            inst, holder_ptr);
+        detail::type_caster<T>::template init_instance_for_type<T, A>(inst, holder_ptr);
     }
 
     /// Deallocates an instance; via holder, if constructed; otherwise via operator delete.
@@ -2450,15 +2431,6 @@ public:
     template <typename... Extra>
     enum_(const handle &scope, const char *name, const Extra &...extra)
         : class_<Type>(scope, name, extra...), m_base(*this, scope) {
-        {
-            if (cross_extension_shared_states::native_enum_type_map::get().count(
-                    std::type_index(typeid(Type)))
-                != 0) {
-                pybind11_fail("pybind11::enum_ \"" + std::string(name)
-                              + "\" is already registered as a pybind11::native_enum!");
-            }
-        }
-
         constexpr bool is_arithmetic = detail::any_of<std::is_same<arithmetic, Extra>...>::value;
         constexpr bool is_convertible = std::is_convertible<Type, Underlying>::value;
         m_base.init(is_arithmetic, is_convertible);
