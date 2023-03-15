@@ -48,8 +48,10 @@ main_headers = {
 }
 
 detail_headers = {
+    "include/pybind11/detail/abi_platform_id.h",
     "include/pybind11/detail/class.h",
     "include/pybind11/detail/common.h",
+    "include/pybind11/detail/cross_extension_shared_state.h",
     "include/pybind11/detail/descr.h",
     "include/pybind11/detail/dynamic_raw_ptr_cast_if_possible.h",
     "include/pybind11/detail/init.h",
@@ -59,6 +61,7 @@ detail_headers = {
     "include/pybind11/detail/smart_holder_type_casters.h",
     "include/pybind11/detail/type_caster_base.h",
     "include/pybind11/detail/type_caster_odr_guard.h",
+    "include/pybind11/detail/type_map.h",
     "include/pybind11/detail/typeid.h",
 }
 
