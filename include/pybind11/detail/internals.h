@@ -330,7 +330,7 @@ inline internals **get_internals_pp_from_capsule(handle obj) {
 
 /// Return a reference to the current `internals` data
 PYBIND11_NOINLINE internals &get_internals() {
-    internals **&internals_pp = get_internals_pp();
+    auto **&internals_pp = get_internals_pp();
     if (internals_pp && *internals_pp) {
         return **internals_pp;
     }
