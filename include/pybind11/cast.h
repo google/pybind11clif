@@ -227,7 +227,7 @@ public:
     explicit operator std::reference_wrapper<type>() { return cast_op<type &>(subcaster); }
 };
 
-#define PYBIND11_TYPE_CASTER(type, py_name)                                                       \
+#define PYBIND11_TYPE_CASTER_IMPL(type, py_name, rvp_or_rvpp_type)                                \
 protected:                                                                                        \
     type value;                                                                                   \
                                                                                                   \
@@ -239,21 +239,27 @@ public:                                                                         
                   int>                                                                            \
               = 0>                                                                                \
     static ::pybind11::handle cast(                                                               \
-        T_ *src, ::pybind11::return_value_policy policy, ::pybind11::handle parent) {             \
+        T_ *src, const rvp_or_rvpp_type &rvp_or_rvpp, ::pybind11::handle parent) {                \
         if (!src)                                                                                 \
             return ::pybind11::none().release();                                                  \
-        if (policy == ::pybind11::return_value_policy::take_ownership) {                          \
-            auto h = cast(std::move(*src), policy, parent);                                       \
+        if (rvp_or_rvpp == ::pybind11::return_value_policy::take_ownership) {                     \
+            auto h = cast(std::move(*src), rvp_or_rvpp, parent);                                  \
             delete src;                                                                           \
             return h;                                                                             \
         }                                                                                         \
-        return cast(*src, policy, parent);                                                        \
+        return cast(*src, rvp_or_rvpp, parent);                                                   \
     }                                                                                             \
     operator type *() { return &value; }               /* NOLINT(bugprone-macro-parentheses) */   \
     operator type &() { return value; }                /* NOLINT(bugprone-macro-parentheses) */   \
     operator type &&() && { return std::move(value); } /* NOLINT(bugprone-macro-parentheses) */   \
     template <typename T_>                                                                        \
     using cast_op_type = ::pybind11::detail::movable_cast_op_type<T_>
+
+#define PYBIND11_TYPE_CASTER(type, py_name)                                                       \
+    PYBIND11_TYPE_CASTER_IMPL(type, py_name, ::pybind11::return_value_policy)
+
+#define PYBIND11_TYPE_CASTER_RVPP(type, py_name)                                                  \
+    PYBIND11_TYPE_CASTER_IMPL(type, py_name, ::pybind11::return_value_policy_pack)
 
 template <typename CharT>
 using is_std_char_type = any_of<std::is_same<CharT, char>, /* std::string */
@@ -579,11 +585,12 @@ struct string_caster {
         return true;
     }
 
-    static handle cast(const StringType &src, return_value_policy policy, handle /* parent */) {
+    static handle
+    cast(const StringType &src, const return_value_policy_pack &rvpp, handle /* parent */) {
         const char *buffer = reinterpret_cast<const char *>(src.data());
         auto nbytes = ssize_t(src.size() * sizeof(CharT));
         handle s;
-        if (policy == return_value_policy::_return_as_bytes) {
+        if (rvpp.policy == return_value_policy::_return_as_bytes) {
             s = PyBytes_FromStringAndSize(buffer, nbytes);
         } else {
             s = decode_utfN(buffer, nbytes);
@@ -791,22 +798,22 @@ public:
     }
 
     template <typename T>
-    static handle cast(T &&src, return_value_policy policy, handle parent) {
-        return cast_impl(std::forward<T>(src), policy, parent, indices{});
+    static handle cast(T &&src, const return_value_policy_pack &rvpp, handle parent) {
+        return cast_impl(std::forward<T>(src), rvpp, parent, indices{});
     }
 
     // copied from the PYBIND11_TYPE_CASTER macro
     template <typename T>
-    static handle cast(T *src, return_value_policy policy, handle parent) {
+    static handle cast(T *src, const return_value_policy_pack &rvpp, handle parent) {
         if (!src) {
             return none().release();
         }
-        if (policy == return_value_policy::take_ownership) {
-            auto h = cast(std::move(*src), policy, parent);
+        if (rvpp.policy == return_value_policy::take_ownership) {
+            auto h = cast(std::move(*src), rvpp, parent);
             delete src;
             return h;
         }
-        return cast(*src, policy, parent);
+        return cast(*src, rvpp, parent);
     }
 
     static constexpr auto name
@@ -848,12 +855,14 @@ protected:
 
     /* Implementation: Convert a C++ tuple into a Python tuple */
     template <typename T, size_t... Is>
-    static handle
-    cast_impl(T &&src, return_value_policy policy, handle parent, index_sequence<Is...>) {
-        PYBIND11_WORKAROUND_INCORRECT_MSVC_C4100(src, policy, parent);
-        PYBIND11_WORKAROUND_INCORRECT_GCC_UNUSED_BUT_SET_PARAMETER(policy, parent);
+    static handle cast_impl(T &&src,
+                            const return_value_policy_pack &rvpp,
+                            handle parent,
+                            index_sequence<Is...>) {
+        PYBIND11_WORKAROUND_INCORRECT_MSVC_C4100(src, rvpp, parent);
+        PYBIND11_WORKAROUND_INCORRECT_GCC_UNUSED_BUT_SET_PARAMETER(rvpp, parent);
         std::array<object, size> entries{{reinterpret_steal<object>(
-            make_caster<Ts>::cast(std::get<Is>(std::forward<T>(src)), policy, parent))...}};
+            make_caster<Ts>::cast(std::get<Is>(std::forward<T>(src)), rvpp.get(Is), parent))...}};
         for (const auto &entry : entries) {
             if (!entry) {
                 return handle();
@@ -1384,12 +1393,16 @@ tuple make_tuple() {
     return tuple(0);
 }
 
-template <return_value_policy policy = return_value_policy::automatic_reference, typename... Args>
-tuple make_tuple(Args &&...args_) {
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+template <std::size_t... Is, typename... Args>
+tuple make_tuple_rvpp_impl(const return_value_policy_pack &rvpp,
+                           detail::index_sequence<Is...>,
+                           Args &&...args_) {
     constexpr size_t size = sizeof...(Args);
     std::array<object, size> args{{reinterpret_steal<object>(
-        detail::make_caster<Args>::cast(std::forward<Args>(args_), policy, nullptr))...}};
-    for (size_t i = 0; i < args.size(); i++) {
+        detail::make_caster<Args>::cast(std::forward<Args>(args_), rvpp.get(Is), nullptr))...}};
+    for (size_t i = 0; i != args.size(); i++) {
         if (!args[i]) {
 #if !defined(PYBIND11_DETAILED_ERROR_MESSAGES)
             throw cast_error_unable_to_convert_call_arg(std::to_string(i));
@@ -1407,26 +1420,40 @@ tuple make_tuple(Args &&...args_) {
     return result;
 }
 
+PYBIND11_NAMESPACE_END(detail)
+
+template <typename... Args>
+tuple make_tuple_rvpp(const return_value_policy_pack &rvpp, Args &&...args_) {
+    using indices = detail::make_index_sequence<sizeof...(Args)>;
+    return detail::make_tuple_rvpp_impl(rvpp, indices{}, std::forward<Args>(args_)...);
+}
+
+template <return_value_policy policy = return_value_policy::automatic_reference, typename... Args>
+tuple make_tuple(Args &&...args_) {
+    return make_tuple_rvpp(policy, std::forward<Args>(args_)...);
+}
+
+struct arg;
+
+PYBIND11_NAMESPACE_BEGIN(detail)
+
 /// \ingroup annotations
 /// Annotation for arguments
-struct arg {
+struct arg_base {
     /// Constructs an argument with the name of the argument; if null or omitted, this is a
     /// positional argument.
-    constexpr explicit arg(const char *name = nullptr)
+    constexpr explicit arg_base(const char *name = nullptr)
         : name(name), flag_noconvert(false), flag_none(true) {}
+
     /// Assign a value to this argument
     template <typename T>
     arg_v operator=(T &&value) const;
+
     /// Indicate that the type should not be converted in the type caster
-    arg &noconvert(bool flag = true) {
-        flag_noconvert = flag;
-        return *this;
-    }
+    arg_base &noconvert(bool flag = true);
+
     /// Indicates that the argument should/shouldn't allow None (e.g. for nullable pointer args)
-    arg &none(bool flag = true) {
-        flag_none = flag;
-        return *this;
-    }
+    arg_base &none(bool flag = true);
 
     const char *name;        ///< If non-null, this is a named kwargs argument
     bool flag_noconvert : 1; ///< If set, do not allow conversion (requires a supporting type
@@ -1434,10 +1461,35 @@ struct arg {
     bool flag_none : 1;      ///< If set (the default), allow None to be passed to this argument
 };
 
+PYBIND11_NAMESPACE_END(detail)
+
+struct arg : detail::arg_base {
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    arg(const detail::arg_base &arg_b) : detail::arg_base{arg_b} {}
+
+    explicit arg(const char *name = nullptr) : detail::arg_base{name} {}
+
+    /// Assign a value to this argument
+    template <typename T>
+    arg_v operator=(T &&value) const;
+
+    arg &policies(const from_python_policies &policies) {
+        m_policies = policies;
+        return *this;
+    }
+
+    from_python_policies m_policies;
+};
+
 /// \ingroup annotations
 /// Annotation for arguments with values
 struct arg_v : arg {
+#if !defined(_MSC_VER)
+    // error C2248: 'pybind11::arg_v::arg_v':
+    // cannot access private member declared in class 'pybind11::arg_v'
 private:
+#endif
+    friend struct arg_base;
     template <typename T>
     arg_v(arg &&base, T &&x, const char *descr = nullptr)
         : arg(base), value(reinterpret_steal<object>(detail::make_caster<T>::cast(
@@ -1499,6 +1551,25 @@ struct kw_only {};
 /// an unnamed '/' argument (in Python 3.8)
 struct pos_only {};
 
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+template <typename T>
+arg_v arg_base::operator=(T &&value) const {
+    return {*this, std::forward<T>(value)};
+}
+
+inline arg_base &arg_base::noconvert(bool flag) {
+    flag_noconvert = flag;
+    return *this;
+}
+
+inline arg_base &arg_base::none(bool flag) {
+    flag_none = flag;
+    return *this;
+}
+
+PYBIND11_NAMESPACE_END(detail)
+
 template <typename T>
 arg_v arg::operator=(T &&value) const {
     return {*this, std::forward<T>(value)};
@@ -1512,7 +1583,9 @@ inline namespace literals {
 /** \rst
     String literal version of `arg`
  \endrst */
-constexpr arg operator"" _a(const char *name, size_t) { return arg(name); }
+constexpr detail::arg_base operator"" _a(const char *name, size_t) {
+    return detail::arg_base(name);
+}
 } // namespace literals
 
 PYBIND11_NAMESPACE_BEGIN(detail)
@@ -1536,7 +1609,7 @@ struct function_call {
     std::vector<handle> args;
 
     /// The `convert` value the arguments should be loaded with
-    std::vector<bool> args_convert;
+    std::vector<from_python_policies> args_policies;
 
     /// Extra references for the optional `py::args` and/or `py::kwargs` arguments (which, if
     /// present, are also in `args` but without a reference).
@@ -1597,11 +1670,11 @@ private:
     template <size_t... Is>
     bool load_impl_sequence(function_call &call, index_sequence<Is...>) {
 #ifdef __cpp_fold_expressions
-        if ((... || !std::get<Is>(argcasters).load(call.args[Is], call.args_convert[Is]))) {
+        if ((... || !std::get<Is>(argcasters).load(call.args[Is], call.args_policies[Is]))) {
             return false;
         }
 #else
-        for (bool r : {std::get<Is>(argcasters).load(call.args[Is], call.args_convert[Is])...}) {
+        for (bool r : {std::get<Is>(argcasters).load(call.args[Is], call.args_policies[Is])...}) {
             if (!r) {
                 return false;
             }
@@ -1618,14 +1691,11 @@ private:
     std::tuple<make_caster<Args>...> argcasters;
 };
 
-/// Helper class which collects only positional arguments for a Python function call.
-/// A fancier version below can collect any argument, but this one is optimal for simple calls.
-template <return_value_policy policy>
-class simple_collector {
+class simple_collector_rvpp {
 public:
     template <typename... Ts>
-    explicit simple_collector(Ts &&...values)
-        : m_args(pybind11::make_tuple<policy>(std::forward<Ts>(values)...)) {}
+    explicit simple_collector_rvpp(const return_value_policy_pack &rvpp, Ts &&...values)
+        : m_args(pybind11::make_tuple_rvpp(rvpp, std::forward<Ts>(values)...)) {}
 
     const tuple &args() const & { return m_args; }
     dict kwargs() const { return {}; }
@@ -1645,17 +1715,25 @@ private:
     tuple m_args;
 };
 
-/// Helper class which collects positional, keyword, * and ** arguments for a Python function call
+/// Helper class which collects only positional arguments for a Python function call.
+/// A fancier version below can collect any argument, but this one is optimal for simple calls.
 template <return_value_policy policy>
-class unpacking_collector {
+class simple_collector : public simple_collector_rvpp {
 public:
     template <typename... Ts>
-    explicit unpacking_collector(Ts &&...values) {
+    explicit simple_collector(Ts &&...values)
+        : simple_collector_rvpp(policy, std::forward<Ts>(values)...) {}
+};
+
+class unpacking_collector_rvpp {
+public:
+    template <typename... Ts>
+    explicit unpacking_collector_rvpp(const return_value_policy_pack &rvpp, Ts &&...values) {
         // Tuples aren't (easily) resizable so a list is needed for collection,
         // but the actual function call strictly requires a tuple.
         auto args_list = list();
-        using expander = int[];
-        (void) expander{0, (process(args_list, std::forward<Ts>(values)), 0)...};
+        using indices = detail::make_index_sequence<sizeof...(Ts)>;
+        ctor_helper(args_list, rvpp, indices{}, std::forward<Ts>(values)...);
 
         m_args = std::move(args_list);
     }
@@ -1676,10 +1754,19 @@ public:
     }
 
 private:
+    template <std::size_t... Is, typename... Ts>
+    void ctor_helper(list args_list,
+                     const return_value_policy_pack &rvpp,
+                     detail::index_sequence<Is...>,
+                     Ts &&...values) {
+        using expander = int[];
+        (void) expander{0, (process(args_list, rvpp.get(Is), std::forward<Ts>(values)), 0)...};
+    }
+
     template <typename T>
-    void process(list &args_list, T &&x) {
+    void process(list &args_list, const return_value_policy_pack &rvpp, T &&x) {
         auto o = reinterpret_steal<object>(
-            detail::make_caster<T>::cast(std::forward<T>(x), policy, {}));
+            detail::make_caster<T>::cast(std::forward<T>(x), rvpp, {}));
         if (!o) {
 #if !defined(PYBIND11_DETAILED_ERROR_MESSAGES)
             throw cast_error_unable_to_convert_call_arg(std::to_string(args_list.size()));
@@ -1691,13 +1778,14 @@ private:
         args_list.append(std::move(o));
     }
 
-    void process(list &args_list, detail::args_proxy ap) {
+    void
+    process(list &args_list, const return_value_policy_pack & /*rvpp*/, detail::args_proxy ap) {
         for (auto a : ap) {
             args_list.append(a);
         }
     }
 
-    void process(list & /*args_list*/, arg_v a) {
+    void process(list & /*args_list*/, const return_value_policy_pack & /*rvpp*/, arg_v a) {
         if (!a.name) {
 #if !defined(PYBIND11_DETAILED_ERROR_MESSAGES)
             nameless_argument_error();
@@ -1722,7 +1810,9 @@ private:
         m_kwargs[a.name] = std::move(a.value);
     }
 
-    void process(list & /*args_list*/, detail::kwargs_proxy kp) {
+    void process(list & /*args_list*/,
+                 const return_value_policy_pack & /*rvpp*/,
+                 detail::kwargs_proxy kp) {
         if (!kp) {
             return;
         }
@@ -1764,6 +1854,15 @@ private:
     dict m_kwargs;
 };
 
+/// Helper class which collects positional, keyword, * and ** arguments for a Python function call
+template <return_value_policy policy>
+class unpacking_collector : public unpacking_collector_rvpp {
+public:
+    template <typename... Ts>
+    explicit unpacking_collector(Ts &&...values)
+        : unpacking_collector_rvpp(policy, std::forward<Ts>(values)...) {}
+};
+
 // [workaround(intel)] Separate function required here
 // We need to put this into a separate function because the Intel compiler
 // fails to compile enable_if_t<!all_of<is_positional<Args>...>::value>
@@ -1771,6 +1870,12 @@ private:
 template <typename... Args>
 constexpr bool args_are_all_positional() {
     return all_of<is_positional<Args>...>::value;
+}
+
+template <typename... Args, typename = enable_if_t<args_are_all_positional<Args...>()>>
+simple_collector_rvpp collect_arguments_rvpp(const return_value_policy_pack &rvpp,
+                                             Args &&...args) {
+    return simple_collector_rvpp(rvpp, std::forward<Args>(args)...);
 }
 
 /// Collect only positional arguments for a Python function call
@@ -1781,11 +1886,9 @@ simple_collector<policy> collect_arguments(Args &&...args) {
     return simple_collector<policy>(std::forward<Args>(args)...);
 }
 
-/// Collect all arguments, including keywords and unpacking (only instantiated when needed)
-template <return_value_policy policy,
-          typename... Args,
-          typename = enable_if_t<!args_are_all_positional<Args...>()>>
-unpacking_collector<policy> collect_arguments(Args &&...args) {
+template <typename... Args, typename = enable_if_t<!args_are_all_positional<Args...>()>>
+unpacking_collector_rvpp collect_arguments_rvpp(const return_value_policy_pack &rvpp,
+                                                Args &&...args) {
     // Following argument order rules for generalized unpacking according to PEP 448
     static_assert(constexpr_last<is_positional, Args...>()
                           < constexpr_first<is_keyword_or_ds, Args...>()
@@ -1793,24 +1896,39 @@ unpacking_collector<policy> collect_arguments(Args &&...args) {
                              < constexpr_first<is_ds_unpacking, Args...>(),
                   "Invalid function call: positional args must precede keywords and ** unpacking; "
                   "* unpacking must precede ** unpacking");
+    return unpacking_collector_rvpp(rvpp, std::forward<Args>(args)...);
+}
+
+/// Collect all arguments, including keywords and unpacking (only instantiated when needed)
+template <return_value_policy policy,
+          typename... Args,
+          typename = enable_if_t<!args_are_all_positional<Args...>()>>
+unpacking_collector<policy> collect_arguments(Args &&...args) {
     return unpacking_collector<policy>(std::forward<Args>(args)...);
+}
+
+template <typename Derived>
+template <typename... Args>
+object object_api<Derived>::call_with_policies(const return_value_policy_pack &rvpp,
+                                               Args &&...args) const {
+#ifndef NDEBUG
+    if (!PyGILState_Check()) {
+        pybind11_fail("pybind11::object_api<>::call_with_policies() PyGILState_Check() failure.");
+    }
+#endif
+    return detail::collect_arguments_rvpp(rvpp, std::forward<Args>(args)...).call(derived().ptr());
 }
 
 template <typename Derived>
 template <return_value_policy policy, typename... Args>
 object object_api<Derived>::operator()(Args &&...args) const {
-#ifndef NDEBUG
-    if (!PyGILState_Check()) {
-        pybind11_fail("pybind11::object_api<>::operator() PyGILState_Check() failure.");
-    }
-#endif
-    return detail::collect_arguments<policy>(std::forward<Args>(args)...).call(derived().ptr());
+    return call_with_policies(policy, std::forward<Args>(args)...);
 }
 
 template <typename Derived>
 template <return_value_policy policy, typename... Args>
 object object_api<Derived>::call(Args &&...args) const {
-    return operator()<policy>(std::forward<Args>(args)...);
+    return call_with_policies(policy, std::forward<Args>(args)...);
 }
 
 PYBIND11_NAMESPACE_END(detail)

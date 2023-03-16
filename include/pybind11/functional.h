@@ -23,10 +23,10 @@ struct type_caster<std::function<Return(Args...)>> {
     using function_type = Return (*)(Args...);
 
 public:
-    bool load(handle src, bool convert) {
+    bool load(handle src, from_python_policies fpp) {
         if (src.is_none()) {
             // Defer accepting None to other overloads (if we aren't in convert mode):
-            if (!convert) {
+            if (!fpp.convert) {
                 return false;
             }
             return true;
@@ -102,29 +102,32 @@ public:
         // to emulate 'move initialization capture' in C++11
         struct func_wrapper {
             func_handle hfunc;
-            explicit func_wrapper(func_handle &&hf) noexcept : hfunc(std::move(hf)) {}
+            return_value_policy_pack rvpp;
+            func_wrapper(func_handle &&hf, const return_value_policy_pack &rvpp) noexcept
+                : hfunc(std::move(hf)), rvpp(rvpp) {}
             Return operator()(Args... args) const {
                 gil_scoped_acquire acq;
                 // casts the returned object as a rvalue to the return type
-                return hfunc.f(std::forward<Args>(args)...).template cast<Return>();
+                return hfunc.f.call_with_policies(rvpp, std::forward<Args>(args)...)
+                    .template cast<Return>();
             }
         };
 
-        value = func_wrapper(func_handle(std::move(func)));
+        value = func_wrapper(func_handle(std::move(func)), fpp.rvpp);
         return true;
     }
 
     template <typename Func>
-    static handle cast(Func &&f_, return_value_policy policy, handle /* parent */) {
+    static handle cast(Func &&f_, const return_value_policy_pack &rvpp, handle /* parent */) {
         if (!f_) {
             return none().release();
         }
 
         auto result = f_.template target<function_type>();
         if (result) {
-            return cpp_function(*result, policy).release();
+            return cpp_function(*result, rvpp).release();
         }
-        return cpp_function(std::forward<Func>(f_), policy).release();
+        return cpp_function(std::forward<Func>(f_), rvpp).release();
     }
 
     PYBIND11_TYPE_CASTER(type,
