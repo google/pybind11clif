@@ -24,6 +24,10 @@ enum class export_values { exv0, exv1 };
 
 enum class member_doc { mem0, mem1, mem2 };
 
+struct class_with_enum {
+    enum class in_class { one, two };
+};
+
 // https://github.com/protocolbuffers/protobuf/blob/d70b5c5156858132decfdbae0a1103e6a5cb1345/src/google/protobuf/generated_enum_util.h#L52-L53
 template <typename T>
 struct is_proto_enum : std::false_type {};
@@ -94,6 +98,11 @@ TEST_SUBMODULE(native_enum, m) {
              .value("mem0", member_doc::mem0, "docA")
              .value("mem1", member_doc::mem1)
              .value("mem2", member_doc::mem2, "docC");
+
+    py::class_<class_with_enum> py_class_with_enum(m, "class_with_enum");
+    py_class_with_enum += py::native_enum<class_with_enum::in_class>("in_class")
+                              .value("one", class_with_enum::in_class::one)
+                              .value("two", class_with_enum::in_class::two);
 
     m.def("isinstance_color", [](const py::object &obj) { return py::isinstance<color>(obj); });
 

@@ -76,6 +76,11 @@ def test_member_doc():
     assert m.member_doc.mem2.__doc__ == "docC"
 
 
+def test_class_with_enum():
+    for value, name in enumerate(("one", "two")):
+        assert m.class_with_enum.in_class[name].value == value
+
+
 def test_pybind11_isinstance_color():
     for name, _ in COLOR_MEMBERS:
         assert m.isinstance_color(m.color[name])
