@@ -176,11 +176,13 @@ struct argument_record {
     const char *name;  ///< Argument name
     const char *descr; ///< Human-readable version of the argument value
     handle value;      ///< Associated Python object
-    bool convert : 1;  ///< True if the argument is allowed to convert when loading
-    bool none : 1;     ///< True if None is allowed when loading
+    from_python_policies policies;
 
-    argument_record(const char *name, const char *descr, handle value, bool convert, bool none)
-        : name(name), descr(descr), value(value), convert(convert), none(none) {}
+    argument_record(const char *name,
+                    const char *descr,
+                    handle value,
+                    const from_python_policies &policies)
+        : name(name), descr(descr), value(value), policies(policies) {}
 };
 
 /// Internal data structure which holds metadata about a bound function (signature, overloads,
@@ -212,8 +214,8 @@ struct function_record {
     /// Pointer to custom destructor for 'data' (if needed)
     void (*free_data)(function_record *ptr) = nullptr;
 
-    /// Return value policy associated with this function
-    return_value_policy policy = return_value_policy::automatic;
+    /// Return value policies associated with this function
+    return_value_policy_pack rvpp;
 
     /// True if name == '__init__'
     bool is_constructor : 1;
@@ -359,7 +361,7 @@ struct type_record {
 
 inline function_call::function_call(const function_record &f, handle p) : func(f), parent(p) {
     args.reserve(f.nargs);
-    args_convert.reserve(f.nargs);
+    args_policies.reserve(f.nargs);
 }
 
 /// Tag for a new-style `__init__` defined in `detail/init.h`
@@ -407,7 +409,12 @@ struct process_attribute<char *> : process_attribute<const char *> {};
 /// Process an attribute indicating the function's return value policy
 template <>
 struct process_attribute<return_value_policy> : process_attribute_default<return_value_policy> {
-    static void init(const return_value_policy &p, function_record *r) { r->policy = p; }
+    static void init(const return_value_policy &p, function_record *r) { r->rvpp.policy = p; }
+};
+template <>
+struct process_attribute<return_value_policy_pack>
+    : process_attribute_default<return_value_policy_pack> {
+    static void init(const return_value_policy_pack &rvpp, function_record *r) { r->rvpp = rvpp; }
 };
 
 /// Process an attribute which indicates that this is an overloaded function associated with a
@@ -455,7 +462,8 @@ inline void check_kw_only_arg(const arg &a, function_record *r) {
 
 inline void append_self_arg_if_needed(function_record *r) {
     if (r->is_method && r->args.empty()) {
-        r->args.emplace_back("self", nullptr, handle(), /*convert=*/true, /*none=*/false);
+        r->args.emplace_back(
+            "self", nullptr, handle(), from_python_policies(/*convert=*/true, /*none=*/false));
     }
 }
 
@@ -464,19 +472,27 @@ template <>
 struct process_attribute<arg> : process_attribute_default<arg> {
     static void init(const arg &a, function_record *r) {
         append_self_arg_if_needed(r);
-        r->args.emplace_back(a.name, nullptr, handle(), !a.flag_noconvert, a.flag_none);
+        r->args.emplace_back(
+            a.name,
+            nullptr,
+            handle(),
+            from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
     }
 };
+template <>
+struct process_attribute<detail::arg_base> : process_attribute<arg> {};
 
 /// Process a keyword argument attribute (*with* a default value)
 template <>
 struct process_attribute<arg_v> : process_attribute_default<arg_v> {
     static void init(const arg_v &a, function_record *r) {
         if (r->is_method && r->args.empty()) {
-            r->args.emplace_back(
-                "self", /*descr=*/nullptr, /*parent=*/handle(), /*convert=*/true, /*none=*/false);
+            r->args.emplace_back("self",
+                                 /*descr=*/nullptr,
+                                 /*parent=*/handle(),
+                                 from_python_policies(/*convert=*/true, /*none=*/false));
         }
 
         if (!a.value) {
@@ -505,7 +521,11 @@ struct process_attribute<arg_v> : process_attribute_default<arg_v> {
                           "more information.");
 #endif
         }
-        r->args.emplace_back(a.name, a.descr, a.value.inc_ref(), !a.flag_noconvert, a.flag_none);
+        r->args.emplace_back(
+            a.name,
+            a.descr,
+            a.value.inc_ref(),
+            from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
     }
@@ -667,7 +687,7 @@ using extract_guard_t = typename exactly_one_t<is_call_guard, call_guard<>, Extr
 
 /// Check the number of named arguments at compile time
 template <typename... Extra,
-          size_t named = constexpr_sum(std::is_base_of<arg, Extra>::value...),
+          size_t named = constexpr_sum(std::is_base_of<arg_base, Extra>::value...),
           size_t self = constexpr_sum(std::is_same<is_method, Extra>::value...)>
 constexpr bool expected_num_args(size_t nargs, bool has_args, bool has_kwargs) {
     PYBIND11_WORKAROUND_INCORRECT_MSVC_C4100(nargs, has_args, has_kwargs);

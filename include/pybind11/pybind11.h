@@ -239,17 +239,15 @@ protected:
             auto *cap = const_cast<capture *>(reinterpret_cast<const capture *>(data));
 
             /* Override policy for rvalues -- usually to enforce rvp::move on an rvalue */
-            return_value_policy policy
-                = return_value_policy_override<Return>::policy(call.func.policy);
+            return_value_policy_pack rvpp
+                = call.func.rvpp.override_policy(return_value_policy_override<Return>::policy);
 
             /* Function scope guard -- defaults to the compile-to-nothing `void_type` */
             using Guard = extract_guard_t<Extra...>;
 
             /* Perform the function call */
-            handle result
-                = cast_out::cast(std::move(args_converter).template call<Return, Guard>(cap->f),
-                                 policy,
-                                 call.parent);
+            handle result = cast_out::cast(
+                std::move(args_converter).template call<Return, Guard>(cap->f), rvpp, call.parent);
 
             /* Invoke call policy post-call hook */
             process_attributes<Extra...>::postcall(call, result);
@@ -772,7 +770,7 @@ protected:
 
                     call.init_self = PyTuple_GET_ITEM(args_in, 0);
                     call.args.emplace_back(reinterpret_cast<PyObject *>(&self_value_and_holder));
-                    call.args_convert.push_back(false);
+                    call.args_policies.emplace_back(false);
                     ++args_copied;
                 }
 
@@ -788,12 +786,15 @@ protected:
                     }
 
                     handle arg(PyTuple_GET_ITEM(args_in, args_copied));
-                    if (arg_rec && !arg_rec->none && arg.is_none()) {
+                    if (arg_rec && !arg_rec->policies.none && arg.is_none()) {
                         bad_arg = true;
                         break;
                     }
                     call.args.push_back(arg);
-                    call.args_convert.push_back(arg_rec ? arg_rec->convert : true);
+                    call.args_policies.emplace_back(
+                        arg_rec ? from_python_policies(
+                            arg_rec->policies.rvpp, arg_rec->policies.convert, false)
+                                : from_python_policies(true, false));
                 }
                 if (bad_arg) {
                     continue; // Maybe it was meant for another overload (issue #688)
@@ -817,7 +818,7 @@ protected:
                         }
                         if (value) {
                             call.args.push_back(value);
-                            call.args_convert.push_back(arg_rec.convert);
+                            call.args_policies.push_back(arg_rec.policies);
                         } else {
                             break;
                         }
@@ -853,7 +854,7 @@ protected:
                             value = arg_rec.value;
                         }
 
-                        if (!arg_rec.none && value.is_none()) {
+                        if (!arg_rec.policies.none && value.is_none()) {
                             break;
                         }
 
@@ -865,7 +866,7 @@ protected:
                             }
 
                             call.args.push_back(value);
-                            call.args_convert.push_back(arg_rec.convert);
+                            call.args_policies.push_back(arg_rec.policies);
                         } else {
                             break;
                         }
@@ -903,7 +904,7 @@ protected:
                     } else {
                         call.args[func.nargs_pos] = extra_args;
                     }
-                    call.args_convert.push_back(false);
+                    call.args_policies.emplace_back(false);
                     call.args_ref = std::move(extra_args);
                 }
 
@@ -913,26 +914,27 @@ protected:
                         kwargs = dict(); // If we didn't get one, send an empty one
                     }
                     call.args.push_back(kwargs);
-                    call.args_convert.push_back(false);
+                    call.args_policies.emplace_back(false);
                     call.kwargs_ref = std::move(kwargs);
                 }
 
 // 5. Put everything in a vector.  Not technically step 5, we've been building it
 // in `call.args` all along.
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
-                if (call.args.size() != func.nargs || call.args_convert.size() != func.nargs) {
+                if (call.args.size() != func.nargs || call.args_policies.size() != func.nargs) {
                     pybind11_fail("Internal error: function call dispatcher inserted wrong number "
                                   "of arguments!");
                 }
 #endif
 
-                std::vector<bool> second_pass_convert;
+                std::vector<from_python_policies> second_pass_args_policies;
                 if (overloaded) {
                     // We're in the first no-convert pass, so swap out the conversion flags for a
                     // set of all-false flags.  If the call fails, we'll swap the flags back in for
                     // the conversion-allowed call below.
-                    second_pass_convert.resize(func.nargs, false);
-                    call.args_convert.swap(second_pass_convert);
+                    second_pass_args_policies.resize(
+                        func.nargs, from_python_policies(false, false)); // m_policies
+                    call.args_policies.swap(second_pass_args_policies);
                 }
 
                 // 6. Call the function.
@@ -952,10 +954,10 @@ protected:
                     // permits conversion (i.e. it hasn't been explicitly specified `.noconvert()`)
                     // then add this call to the list of second pass overloads to try.
                     for (size_t i = func.is_method ? 1 : 0; i < pos_args; i++) {
-                        if (second_pass_convert[i]) {
+                        if (second_pass_args_policies[i].convert) {
                             // Found one: swap the converting flags back in and store the call for
                             // the second pass.
-                            call.args_convert.swap(second_pass_convert);
+                            call.args_policies.swap(second_pass_args_policies);
                             second_pass.push_back(std::move(call));
                             break;
                         }

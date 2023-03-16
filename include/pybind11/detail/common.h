@@ -560,6 +560,72 @@ enum class return_value_policy : uint8_t {
 #define PYBIND11_HAS_RETURN_VALUE_POLICY_RETURN_AS_BYTES
 #define PYBIND11_HAS_RETURN_VALUE_POLICY_CLIF_AUTOMATIC
 
+struct return_value_policy_pack {
+    using vec_rvpp_t = std::vector<return_value_policy_pack>;
+    vec_rvpp_t vec_rvpp;
+    return_value_policy policy = return_value_policy::automatic;
+
+    return_value_policy_pack() = default;
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    return_value_policy_pack(return_value_policy policy) : policy(policy) {}
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    return_value_policy_pack(std::initializer_list<return_value_policy_pack> vec_rvpp)
+        : vec_rvpp(vec_rvpp) {}
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    operator return_value_policy() const { return policy; }
+
+    return_value_policy_pack(const vec_rvpp_t &vec_rvpp, return_value_policy policy)
+        : vec_rvpp(vec_rvpp), policy(policy) {}
+
+    return_value_policy_pack override_policy(return_value_policy new_policy) const {
+        return return_value_policy_pack(vec_rvpp, new_policy);
+    }
+
+    return_value_policy_pack
+    override_policy(return_value_policy (*func)(return_value_policy)) const {
+        return override_policy(func(policy));
+    }
+
+    return_value_policy_pack get(std::size_t i) const {
+        if (vec_rvpp.empty()) {
+            return policy;
+        }
+        return vec_rvpp.at(i);
+    }
+};
+
+struct from_python_policies {
+    return_value_policy_pack rvpp;
+    bool convert : 1; ///< True if the argument is allowed to convert when loading
+    bool none : 1;    ///< True if None is allowed when loading
+
+    from_python_policies()
+        : rvpp(return_value_policy::automatic_reference), convert(true), none(true) {}
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    from_python_policies(bool convert, bool none = true) : convert(convert), none(none) {}
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    from_python_policies(const return_value_policy_pack &rvpp)
+        : rvpp(rvpp), convert(true), none(true) {}
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    operator bool() const { return convert; }
+
+    from_python_policies(const return_value_policy_pack &rvpp, bool convert, bool none)
+        : rvpp(rvpp), convert(convert), none(none) {}
+
+    from_python_policies get(std::size_t i) const {
+        if (rvpp.vec_rvpp.empty()) {
+            return from_python_policies(convert, none);
+        }
+        return from_python_policies(rvpp.vec_rvpp.at(i));
+    }
+};
+
 PYBIND11_NAMESPACE_BEGIN(detail)
 
 inline static constexpr int log2(size_t n, int k = 0) {

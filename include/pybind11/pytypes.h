@@ -45,6 +45,7 @@ struct arg;
 struct arg_v;
 
 PYBIND11_NAMESPACE_BEGIN(detail)
+struct arg_base;
 class args_proxy;
 bool isinstance_generic(handle obj, const std::type_info &tp);
 
@@ -126,6 +127,9 @@ public:
     /// Check if the given item is contained within this object, i.e. ``item in obj``.
     template <typename T>
     bool contains(T &&item) const;
+
+    template <typename... Args>
+    object call_with_policies(const return_value_policy_pack &rvpp, Args &&...args) const;
 
     /** \rst
         Assuming the Python object is a function or implements the ``__call__``
@@ -1280,7 +1284,7 @@ public:
 
 /// Python argument categories (using PEP 448 terms)
 template <typename T>
-using is_keyword = std::is_base_of<arg, T>;
+using is_keyword = std::is_base_of<detail::arg_base, T>;
 template <typename T>
 using is_s_unpacking = std::is_same<args_proxy, T>; // * unpacking
 template <typename T>
