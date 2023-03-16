@@ -539,3 +539,8 @@ The ``name`` property returns the name of the enum value as a unicode string.
            ...
 
     By default, these are omitted to conserve space.
+
+.. note::
+
+    ``py::native_enum`` was added as an alternative to ``py::enum_``
+    with http://github.com/google/pywrapcc/pull/30005
