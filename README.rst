@@ -1,22 +1,34 @@
-.. figure:: https://github.com/pybind/pybind11/raw/master/docs/pybind11-logo.png
-   :alt: pybind11 logo
+==========================================================================
+pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
+==========================================================================
 
-**pybind11 — Seamless operability between C++11 and Python**
+**WARNING**
 
-|Latest Documentation Status| |Stable Documentation Status| |Gitter chat| |GitHub Discussions| |CI| |Build status|
+**CONSTRUCTION ZONE**
 
-|Repology| |PyPI package| |Conda-forge| |Python Versions|
+We may force push to this repo until this notice is removed: DO NOT use this repo as a basis for your work until this notice is removed.
 
-`Setuptools example <https://github.com/pybind/python_example>`_
-• `Scikit-build example <https://github.com/pybind/scikit_build_example>`_
-• `CMake example <https://github.com/pybind/cmake_example>`_
+________
 
-.. start
+This pywrapcc repo originated from the `pybind11 smart_holder <https://github.com/pybind/pybind11/tree/smart_holder>`_ branch. It was created with two important goals in mind:
 
-.. Note::
+1. Sustained innovation and proactive bug fixes.
+2. Sustained continuity.
 
-   This is the pybind11 **smart_holder** branch. Please refer to
-   ``README_smart_holder.rst`` for branch-specific information.
+With original pybind11, these two goals are in a conflict. In the early days of pybind11 this was not so much of a problem, but this has been changing with growing adoption.
+
+Regarding goal 1: pybind11 has two serious long-standing bugs (pybind/pybind11#1138, pybind/pybind11#1333) that have never been fixed on the master branch, but were fixed on the smart_holder branch in early-mid 2021.
+
+Regarding goal 2: The original and still current ``pybind11::smart_holder`` implementation is a compromise solution that avoids an `"ABI break" <https://github.com/pybind/pybind11/blob/09db6445d8da6e918c2d2be3aa4e7b0ddd8077c7/include/pybind11/detail/internals.h#L25>`_, concretely, changes to the ``pybind11::details::internals`` ``struct``. Each time the ``internals`` are changed, the ``PYBIND11_INTERNALS_VERSION`` needs to be incremented, cutting off interoperability with existing PyPI wheels based on pybind11, without giving any hint about this problem at runtime. In the meantime, two other PRs were merged on the pybind11 master branch that require changes to the ``internals``, PRs pybind/pybind11#3275 and pybind/pybind11#4254. To avoid ABI breaks, these PRs were effectively held back behind ``#ifdef`` s. This problem came to a breaking point with PR pybind/pybind11#4329, for which hiding the new feature behind ``#ifdef`` s is not a practical option.
+
+Obviously, neither repeatedly breaking interoperability with existing PyPI wheels, nor holding back bug fixes and new features, is desirable. Therefore PR pybind/pybind11#4329 was extended to include a generalization of the ``internals`` approach, under the name ``cross_extension_shared_state``. The fundamental difference is that established shared state is left untouched, and new shared states are added as needed, largely resolving the conflict between innovation & continuity. The price to pay is added complexity managing the evolving shared states, but that is assumed to be a relatively small extra effort for a few developers, resulting in a big usability gain for a much larger number of users. Ultimately, this is just the familiar innovate-deprecate-cleanup life cycle typical for many (all?) long-term successful major projects (e.g. C++, Python). Even pywrapcc developers are likely to see this as a win worth paying a price for, because they are more free to innovate.
+
+A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs, more than arbitrary "let's change some names" decisions. ABI compatibility will be phased out gradually, on time scales similar to Python EOL policies. Eventually there may be little or no "pybind11" left in pywrapcc, but this will certainly take some time.
+
+________
+
+ORIGINAL pybind11 README, TO BE UPDATED. IN PARTICULR: LINKS NEED TO BE REPLACED.
+________
 
 **pybind11** is a lightweight header-only library that exposes C++ types
 in Python and vice versa, mainly to create Python bindings of existing
@@ -161,24 +173,3 @@ pybind11 is provided under a BSD-style license that can be found in the
 `LICENSE <https://github.com/pybind/pybind11/blob/master/LICENSE>`_
 file. By using, distributing, or contributing to this project, you agree
 to the terms and conditions of this license.
-
-.. |Latest Documentation Status| image:: https://readthedocs.org/projects/pybind11/badge?version=latest
-   :target: http://pybind11.readthedocs.org/en/latest
-.. |Stable Documentation Status| image:: https://img.shields.io/badge/docs-stable-blue.svg
-   :target: http://pybind11.readthedocs.org/en/stable
-.. |Gitter chat| image:: https://img.shields.io/gitter/room/gitterHQ/gitter.svg
-   :target: https://gitter.im/pybind/Lobby
-.. |CI| image:: https://github.com/pybind/pybind11/workflows/CI/badge.svg
-   :target: https://github.com/pybind/pybind11/actions
-.. |Build status| image:: https://ci.appveyor.com/api/projects/status/riaj54pn4h08xy40?svg=true
-   :target: https://ci.appveyor.com/project/wjakob/pybind11
-.. |PyPI package| image:: https://img.shields.io/pypi/v/pybind11.svg
-   :target: https://pypi.org/project/pybind11/
-.. |Conda-forge| image:: https://img.shields.io/conda/vn/conda-forge/pybind11.svg
-   :target: https://github.com/conda-forge/pybind11-feedstock
-.. |Repology| image:: https://repology.org/badge/latest-versions/python:pybind11.svg
-   :target: https://repology.org/project/python:pybind11/versions
-.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/pybind11.svg
-   :target: https://pypi.org/project/pybind11/
-.. |GitHub Discussions| image:: https://img.shields.io/static/v1?label=Discussions&message=Ask&color=blue&logo=github
-   :target: https://github.com/pybind/pybind11/discussions
