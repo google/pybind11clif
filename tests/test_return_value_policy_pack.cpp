@@ -106,10 +106,6 @@ int call_level_4_callback_is(const level_4_callback_is &cb) {
 
 } // namespace
 
-#if defined(__CUDACC__) || defined(__MINGW32__)
-PYBIND11_WARNING_DISABLE_GCC("-Wfree-nonheap-object")
-#endif
-
 TEST_SUBMODULE(return_value_policy_pack, m) {
     auto rvpc = py::return_value_policy::_clif_automatic;
     auto rvpb = py::return_value_policy::_return_as_bytes;
@@ -125,8 +121,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_tuple_bytes_str",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto p = return_pair_string();
-            return &p;
+            static auto *p = new PairString(return_pair_string());
+            return p;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
@@ -166,8 +162,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_dict_bytes_str",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto d = return_map_string();
-            return &d;
+            static auto *d = new MapString(return_map_string());
+            return d;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
@@ -188,8 +184,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_set_bs",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto s = return_set_pair_string();
-            return &s;
+            static auto *s = new SetPairString(return_set_pair_string());
+            return s;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
@@ -201,8 +197,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_vector_bs",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto v = return_vector_pair_string();
-            return &v;
+            static auto *v = new VectorPairString(return_vector_pair_string());
+            return v;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
@@ -214,8 +210,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_array_bs",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto a = return_array_pair_string();
-            return &a;
+            static auto *a = new ArrayPairString(return_array_pair_string());
+            return a;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
@@ -232,8 +228,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_optional_bs",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto o = return_optional_pair_string();
-            return &o;
+            static auto *o = new OptionalPairString(return_optional_pair_string());
+            return o;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 #endif
@@ -251,8 +247,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         "return_variant_bs",
         []() {
             // Ensure cast(T*, ...) overload supports rvpp:
-            static auto v = return_variant_pair_string();
-            return &v;
+            static auto *v = new VariantPairString(return_variant_pair_string());
+            return v;
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 #endif
