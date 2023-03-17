@@ -106,6 +106,10 @@ int call_level_4_callback_is(const level_4_callback_is &cb) {
 
 } // namespace
 
+#if defined(__CUDACC__) || defined(__MINGW32__)
+PYBIND11_WARNING_DISABLE_GCC("-Wfree-nonheap-object")
+#endif
+
 TEST_SUBMODULE(return_value_policy_pack, m) {
     auto rvpc = py::return_value_policy::_clif_automatic;
     auto rvpb = py::return_value_policy::_return_as_bytes;

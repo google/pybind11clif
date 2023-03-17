@@ -810,14 +810,7 @@ public:
         }
         if (rvpp.policy == return_value_policy::take_ownership) {
             auto h = cast(std::move(*src), rvpp, parent);
-#if defined(__CUDACC__) || defined(__MINGW32__)
-            PYBIND11_WARNING_PUSH
-            PYBIND11_WARNING_DISABLE_GCC("-Wfree-nonheap-object")
-#endif
             delete src;
-#if defined(__CUDACC__) || defined(__MINGW32__)
-            PYBIND11_WARNING_POP
-#endif
             return h;
         }
         return cast(*src, rvpp, parent);
