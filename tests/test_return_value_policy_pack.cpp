@@ -122,6 +122,19 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         []() { return return_pair_string(); },
         py::return_value_policy_pack({rvpb, rvpc}));
 
+    m.def("cast_tuple_str_str", [=]() {
+        return py::cast(return_pair_string(), py::return_value_policy_pack({rvpc, rvpc}));
+    });
+    m.def("cast_tuple_bytes_bytes", [=]() {
+        return py::cast(return_pair_string(), py::return_value_policy_pack({rvpb, rvpb}));
+    });
+    m.def("cast_tuple_str_bytes", [=]() {
+        return py::cast(return_pair_string(), py::return_value_policy_pack({rvpc, rvpb}));
+    });
+    m.def("cast_tuple_bytes_str", [=]() {
+        return py::cast(return_pair_string(), py::return_value_policy_pack({rvpb, rvpc}));
+    });
+
     m.def("return_nested_tuple_str", []() { return return_nested_pair_string(); });
     m.def(
         "return_nested_tuple_bytes", []() { return return_nested_pair_string(); }, rvpb);

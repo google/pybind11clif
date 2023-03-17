@@ -10,6 +10,10 @@ from pybind11_tests import return_value_policy_pack as m
         (m.return_tuple_bytes_bytes, (bytes, bytes)),
         (m.return_tuple_str_bytes, (str, bytes)),
         (m.return_tuple_bytes_str, (bytes, str)),
+        (m.cast_tuple_str_str, (str, str)),
+        (m.cast_tuple_bytes_bytes, (bytes, bytes)),
+        (m.cast_tuple_str_bytes, (str, bytes)),
+        (m.cast_tuple_bytes_str, (bytes, str)),
     ],
 )
 def test_return_pair_string(func, expected):
