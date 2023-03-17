@@ -35,5 +35,7 @@ TEST_SUBMODULE(non_owning_holder_issue, m) {
 
     PY_CLASS<VectorValueHolder>(m, "VectorValueHolder")
         .def(py::init<>())
-        .def_readwrite("vec_val_hld", &VectorValueHolder::vec_val_hld);
+        .def_readwrite("vec_val_hld",
+                       &VectorValueHolder::vec_val_hld,
+                       py::return_value_policy::_clif_automatic);
 }

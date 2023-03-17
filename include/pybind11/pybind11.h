@@ -1573,18 +1573,6 @@ struct property_cpp_function {
     static cpp_function write(PM pm, const handle &hdl) {
         return cpp_function([pm](T &c, const D &value) { c.*pm = value; }, is_method(hdl));
     }
-
-    template <typename T_ = T,
-              detail::enable_if_t<!detail::type_uses_smart_holder_type_caster<T_>::value, int> = 0>
-    static constexpr return_value_policy rvp() {
-        return return_value_policy::reference_internal;
-    }
-
-    template <typename T_ = T,
-              detail::enable_if_t<detail::type_uses_smart_holder_type_caster<T_>::value, int> = 0>
-    static constexpr return_value_policy rvp() {
-        return return_value_policy::_clif_automatic;
-    }
 };
 
 // smart_holder specializations for raw pointer members.
@@ -1623,8 +1611,6 @@ struct property_cpp_function<
         return cpp_function([pm](T &c, D value) { c.*pm = std::forward<D>(value); },
                             is_method(hdl));
     }
-
-    static constexpr return_value_policy rvp() { return return_value_policy::_clif_automatic; }
 };
 
 // smart_holder specializations for members held by-value.
@@ -1664,8 +1650,6 @@ struct property_cpp_function<
     static cpp_function write(PM pm, const handle &hdl) {
         return cpp_function([pm](T &c, const D &value) { c.*pm = value; }, is_method(hdl));
     }
-
-    static constexpr return_value_policy rvp() { return return_value_policy::_clif_automatic; }
 };
 
 // smart_holder specializations for std::unique_ptr members.
@@ -1701,8 +1685,6 @@ struct property_cpp_function<
     static cpp_function write(PM pm, const handle &hdl) {
         return cpp_function([pm](T &c, D &&value) { c.*pm = std::move(value); }, is_method(hdl));
     }
-
-    static constexpr return_value_policy rvp() { return return_value_policy::_clif_automatic; }
 };
 
 template <typename type_, typename... options>
@@ -1928,7 +1910,7 @@ public:
         def_property(name,
                      property_cpp_function<type, D>::read(pm, *this),
                      property_cpp_function<type, D>::write(pm, *this),
-                     property_cpp_function<type, D>::rvp(),
+                     return_value_policy::reference_internal,
                      extra...);
         return *this;
     }
@@ -1939,7 +1921,7 @@ public:
                       "def_readonly() requires a class member (or base class member)");
         def_property_readonly(name,
                               property_cpp_function<type, D>::readonly(pm, *this),
-                              property_cpp_function<type, D>::rvp(),
+                              return_value_policy::reference_internal,
                               extra...);
         return *this;
     }
