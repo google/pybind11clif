@@ -3068,6 +3068,21 @@ function get_override(const T *this_ptr, const char *name) {
         }                                                                                         \
     } while (false)
 
+#define PYBIND11_OVERRIDE_IMPL_RVPP(ret_type, cname, name, rvpp, ...)                             \
+    do {                                                                                          \
+        pybind11::gil_scoped_acquire gil;                                                         \
+        pybind11::function override                                                               \
+            = pybind11::get_override(static_cast<const cname *>(this), name);                     \
+        if (override) {                                                                           \
+            auto o = override.call_with_policies(rvpp __VA_OPT__(, ) __VA_ARGS__);                \
+            if (pybind11::detail::cast_is_temporary_value_reference<ret_type>::value) {           \
+                static pybind11::detail::override_caster_t<ret_type> caster;                      \
+                return pybind11::detail::cast_ref<ret_type>(std::move(o), caster);                \
+            }                                                                                     \
+            return pybind11::detail::cast_safe<ret_type>(std::move(o));                           \
+        }                                                                                         \
+    } while (false)
+
 /** \rst
     Macro to populate the virtual method in the trampoline class. This macro tries to look up a
     method named 'fn' from the Python side, deals with the :ref:`gil` and necessary argument
@@ -3138,6 +3153,21 @@ function get_override(const T *this_ptr, const char *name) {
 #define PYBIND11_OVERRIDE_PURE(ret_type, cname, fn, ...)                                          \
     PYBIND11_OVERRIDE_PURE_NAME(                                                                  \
         PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), #fn, fn, __VA_ARGS__)
+
+#define PYBIND11_OVERRIDE_NAME_RVPP(ret_type, cname, name, fn, rvpp, ...)                         \
+    do {                                                                                          \
+        PYBIND11_OVERRIDE_IMPL_RVPP(                                                              \
+            PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, rvpp, __VA_ARGS__);              \
+        return cname::fn(__VA_ARGS__);                                                            \
+    } while (false)
+
+#define PYBIND11_OVERRIDE_PURE_NAME_RVPP(ret_type, cname, name, fn, rvpp, ...)                    \
+    do {                                                                                          \
+        PYBIND11_OVERRIDE_IMPL_RVPP(                                                              \
+            PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, rvpp, __VA_ARGS__);              \
+        pybind11::pybind11_fail(                                                                  \
+            "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
+    } while (false)
 
 // Deprecated versions
 

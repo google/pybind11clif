@@ -102,7 +102,7 @@ public:
         return s.release();
     }
 
-    PYBIND11_TYPE_CASTER(type, const_name("Set[") + key_conv::name + const_name("]"));
+    PYBIND11_TYPE_CASTER_RVPP(type, const_name("Set[") + key_conv::name + const_name("]"));
 };
 
 template <typename Type, typename Key, typename Value>
@@ -158,9 +158,9 @@ public:
         return d.release();
     }
 
-    PYBIND11_TYPE_CASTER(Type,
-                         const_name("Dict[") + key_conv::name + const_name(", ") + value_conv::name
-                             + const_name("]"));
+    PYBIND11_TYPE_CASTER_RVPP(Type,
+                              const_name("Dict[") + key_conv::name + const_name(", ")
+                                  + value_conv::name + const_name("]"));
 };
 
 template <typename Type, typename Value>
