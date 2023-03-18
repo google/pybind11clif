@@ -107,8 +107,8 @@ int call_level_4_callback_is(const level_4_callback_is &cb) {
 } // namespace
 
 TEST_SUBMODULE(return_value_policy_pack, m) {
-    auto rvpc = py::return_value_policy::_clif_automatic;
-    auto rvpb = py::return_value_policy::_return_as_bytes;
+    static constexpr auto rvpc = py::return_value_policy::_clif_automatic;
+    static constexpr auto rvpb = py::return_value_policy::_return_as_bytes;
 
     m.def("return_tuple_str_str", []() { return return_pair_string(); });
     m.def(
@@ -126,16 +126,16 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         },
         py::return_value_policy_pack({rvpb, rvpc}));
 
-    m.def("cast_tuple_str_str", [=]() {
+    m.def("cast_tuple_str_str", []() {
         return py::cast(return_pair_string(), py::return_value_policy_pack({rvpc, rvpc}));
     });
-    m.def("cast_tuple_bytes_bytes", [=]() {
+    m.def("cast_tuple_bytes_bytes", []() {
         return py::cast(return_pair_string(), py::return_value_policy_pack({rvpb, rvpb}));
     });
-    m.def("cast_tuple_str_bytes", [=]() {
+    m.def("cast_tuple_str_bytes", []() {
         return py::cast(return_pair_string(), py::return_value_policy_pack({rvpc, rvpb}));
     });
-    m.def("cast_tuple_bytes_str", [=]() {
+    m.def("cast_tuple_bytes_str", []() {
         return py::cast(return_pair_string(), py::return_value_policy_pack({rvpb, rvpc}));
     });
 
