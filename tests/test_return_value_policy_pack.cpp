@@ -104,6 +104,124 @@ int call_level_4_callback_is(const level_4_callback_is &cb) {
     return cb(call_level_2_callback_is);
 }
 
+struct VirtualBase {
+    VirtualBase() = default;
+    virtual ~VirtualBase() = default;
+
+    virtual int pure() const = 0;
+    virtual int pure_s(const std::string & /*a0*/) const = 0;
+    virtual int pure_b(const std::string & /*a0*/) const = 0;
+    virtual int pure_sb(const std::string & /*a0*/, const std::string & /*a1*/) const = 0;
+    virtual int pure_bs(const std::string & /*a0*/, const std::string & /*a1*/) const = 0;
+
+    virtual int nonp() const { return -8; }
+    virtual int nonp_s(const std::string & /*a0*/) const { return -20; }
+    virtual int nonp_b(const std::string & /*a0*/) const { return -21; }
+    virtual int nonp_sb(const std::string & /*a0*/, const std::string & /*a1*/) const {
+        return -201;
+    }
+    virtual int nonp_bs(const std::string & /*a0*/, const std::string & /*a1*/) const {
+        return -210;
+    }
+};
+
+struct VirtualBaseTrampoline : VirtualBase {
+    static constexpr auto rvpc = py::return_value_policy::_clif_automatic;
+    static constexpr auto rvpb = py::return_value_policy::_return_as_bytes;
+
+    virtual int pure() const override {
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure", pure, rvpc,
+                                         /* no arguments */);
+    }
+    virtual int pure_s(const std::string &a0) const override {
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure_s", pure_s, rvpc, a0);
+    }
+    virtual int pure_b(const std::string &a0) const override {
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure_b", pure_b, rvpb, a0);
+    }
+    virtual int pure_sb(const std::string &a0, const std::string &a1) const override {
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int,
+                                         VirtualBase,
+                                         "py_pure_sb",
+                                         pure_sb,
+                                         py::return_value_policy_pack({rvpc, rvpb}),
+                                         a0,
+                                         a1);
+    }
+    virtual int pure_bs(const std::string &a0, const std::string &a1) const override {
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int,
+                                         VirtualBase,
+                                         "py_pure_bs",
+                                         pure_bs,
+                                         py::return_value_policy_pack({rvpb, rvpc}),
+                                         a0,
+                                         a1);
+    }
+
+    virtual int nonp() const override {
+        PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp", nonp, rvpc,
+                                    /* no arguments */);
+    }
+    virtual int nonp_s(const std::string &a0) const override {
+        PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp_s", nonp_s, rvpc, a0);
+    }
+    virtual int nonp_b(const std::string &a0) const override {
+        PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp_b", nonp_b, rvpb, a0);
+    }
+    virtual int nonp_sb(const std::string &a0, const std::string &a1) const override {
+        PYBIND11_OVERRIDE_NAME_RVPP(int,
+                                    VirtualBase,
+                                    "py_nonp_sb",
+                                    nonp_sb,
+                                    py::return_value_policy_pack({rvpc, rvpb}),
+                                    a0,
+                                    a1);
+    }
+    virtual int nonp_bs(const std::string &a0, const std::string &a1) const override {
+        PYBIND11_OVERRIDE_NAME_RVPP(int,
+                                    VirtualBase,
+                                    "py_nonp_bs",
+                                    nonp_bs,
+                                    py::return_value_policy_pack({rvpb, rvpc}),
+                                    a0,
+                                    a1);
+    }
+};
+
+int call_virtual_override(const VirtualBase &base, const std::string &which) {
+    if (which == "pure") {
+        return base.pure();
+    }
+    if (which == "pure_s") {
+        return base.pure_s("");
+    }
+    if (which == "pure_b") {
+        return base.pure_b("");
+    }
+    if (which == "pure_sb") {
+        return base.pure_sb("", "");
+    }
+    if (which == "pure_bs") {
+        return base.pure_bs("", "");
+    }
+    if (which == "nonp") {
+        return base.nonp();
+    }
+    if (which == "nonp_s") {
+        return base.nonp_s("");
+    }
+    if (which == "nonp_b") {
+        return base.nonp_b("");
+    }
+    if (which == "nonp_sb") {
+        return base.nonp_sb("", "");
+    }
+    if (which == "nonp_bs") {
+        return base.nonp_bs("", "");
+    }
+    return -99; // Invalid which.
+}
+
 } // namespace
 
 TEST_SUBMODULE(return_value_policy_pack, m) {
@@ -286,4 +404,21 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     m.def("call_level_2_callback_is_b", call_level_2_callback_is, rvpb);
     m.def("call_level_3_callback_is_b", call_level_3_callback_is, rvpb);
     m.def("call_level_4_callback_is_b", call_level_4_callback_is, rvpb);
+
+    py::class_<VirtualBase, VirtualBaseTrampoline>(m, "VirtualBase")
+        .def(py::init<>())
+        //
+        .def("py_pure", &VirtualBase::pure)
+        .def("py_pure_s", &VirtualBase::pure_s, py::arg("a0"))
+        .def("py_pure_b", &VirtualBase::pure_b, py::arg("a0"))
+        .def("py_pure_sb", &VirtualBase::pure_sb, py::arg("a0"), py::arg("a1"))
+        .def("py_pure_bs", &VirtualBase::pure_bs, py::arg("a0"), py::arg("a1"))
+        //
+        .def("py_nonp", &VirtualBase::nonp)
+        .def("py_nonp_s", &VirtualBase::nonp_s, py::arg("a0"))
+        .def("py_nonp_b", &VirtualBase::nonp_b, py::arg("a0"))
+        .def("py_nonp_sb", &VirtualBase::nonp_sb, py::arg("a0"), py::arg("a1"))
+        .def("py_nonp_bs", &VirtualBase::nonp_bs, py::arg("a0"), py::arg("a1"));
+
+    m.def("call_virtual_override", call_virtual_override);
 }
