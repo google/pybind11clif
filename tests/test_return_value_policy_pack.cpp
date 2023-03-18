@@ -129,17 +129,17 @@ struct VirtualBaseTrampoline : VirtualBase {
     static constexpr auto rvpc = py::return_value_policy::_clif_automatic;
     static constexpr auto rvpb = py::return_value_policy::_return_as_bytes;
 
-    virtual int pure() const override {
+    int pure() const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure", pure, rvpc,
                                          /* no arguments */);
     }
-    virtual int pure_s(const std::string &a0) const override {
+    int pure_s(const std::string &a0) const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure_s", pure_s, rvpc, a0);
     }
-    virtual int pure_b(const std::string &a0) const override {
+    int pure_b(const std::string &a0) const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure_b", pure_b, rvpb, a0);
     }
-    virtual int pure_sb(const std::string &a0, const std::string &a1) const override {
+    int pure_sb(const std::string &a0, const std::string &a1) const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int,
                                          VirtualBase,
                                          "py_pure_sb",
@@ -148,7 +148,7 @@ struct VirtualBaseTrampoline : VirtualBase {
                                          a0,
                                          a1);
     }
-    virtual int pure_bs(const std::string &a0, const std::string &a1) const override {
+    int pure_bs(const std::string &a0, const std::string &a1) const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int,
                                          VirtualBase,
                                          "py_pure_bs",
@@ -158,17 +158,17 @@ struct VirtualBaseTrampoline : VirtualBase {
                                          a1);
     }
 
-    virtual int nonp() const override {
+    int nonp() const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp", nonp, rvpc,
                                     /* no arguments */);
     }
-    virtual int nonp_s(const std::string &a0) const override {
+    int nonp_s(const std::string &a0) const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp_s", nonp_s, rvpc, a0);
     }
-    virtual int nonp_b(const std::string &a0) const override {
+    int nonp_b(const std::string &a0) const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp_b", nonp_b, rvpb, a0);
     }
-    virtual int nonp_sb(const std::string &a0, const std::string &a1) const override {
+    int nonp_sb(const std::string &a0, const std::string &a1) const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int,
                                     VirtualBase,
                                     "py_nonp_sb",
@@ -177,7 +177,7 @@ struct VirtualBaseTrampoline : VirtualBase {
                                     a0,
                                     a1);
     }
-    virtual int nonp_bs(const std::string &a0, const std::string &a1) const override {
+    int nonp_bs(const std::string &a0, const std::string &a1) const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int,
                                     VirtualBase,
                                     "py_nonp_bs",
