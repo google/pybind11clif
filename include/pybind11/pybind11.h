@@ -3118,7 +3118,12 @@ function get_override(const T *this_ptr, const char *name) {
             "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
     } while (false)
 
-#define PYBIND11_STRIP_FIRST_ARG(A, ...) __VA_ARGS__
+// https://stackoverflow.com/questions/5134523/msvc-doesnt-expand-va-args-correctly
+// Not using `#if defined(_MSC_VER)` here to have only one implementation to test and debug.
+#define PYBIND11_PP_EXPAND(x) x
+#define PYBIND11_STRIP_FIRST_ARG_IMPL(A, ...) __VA_ARGS__
+#define PYBIND11_STRIP_FIRST_ARG(...)                                                             \
+    PYBIND11_PP_EXPAND(PYBIND11_STRIP_FIRST_ARG_IMPL(__VA_ARGS__))
 
 #define PYBIND11_OVERRIDE_NAME_RVPP(ret_type, cname, name, fn, ...)                               \
     do {                                                                                          \
