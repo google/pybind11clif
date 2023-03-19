@@ -8,10 +8,12 @@
 namespace test_class_sh_property_stl {
 
 struct Field {
+    Field(int wrapped_int) : wrapped_int{wrapped_int} {}
     int wrapped_int = 100;
 };
 
 struct FieldHolder {
+    FieldHolder(const Field &fld) : fld{fld} {}
     Field fld = Field{200};
 };
 
