@@ -130,8 +130,7 @@ struct VirtualBaseTrampoline : VirtualBase {
     static constexpr auto rvpb = py::return_value_policy::_return_as_bytes;
 
     int pure() const override {
-        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure", pure, rvpc,
-                                         /* no arguments */);
+        PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure", pure, rvpc);
     }
     int pure_s(const std::string &a0) const override {
         PYBIND11_OVERRIDE_PURE_NAME_RVPP(int, VirtualBase, "py_pure_s", pure_s, rvpc, a0);
@@ -159,8 +158,7 @@ struct VirtualBaseTrampoline : VirtualBase {
     }
 
     int nonp() const override {
-        PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp", nonp, rvpc,
-                                    /* no arguments */);
+        PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp", nonp, rvpc);
     }
     int nonp_s(const std::string &a0) const override {
         PYBIND11_OVERRIDE_NAME_RVPP(int, VirtualBase, "py_nonp_s", nonp_s, rvpc, a0);
