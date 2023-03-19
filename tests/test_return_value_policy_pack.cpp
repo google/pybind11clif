@@ -108,6 +108,9 @@ struct VirtualBase {
     VirtualBase() = default;
     virtual ~VirtualBase() = default;
 
+    // Some compilers complain about implicitly defined versions of some of the following:
+    VirtualBase(const VirtualBase &) = default;
+
     virtual int pure() const = 0;
     virtual int pure_s(const std::string & /*a0*/) const = 0;
     virtual int pure_b(const std::string & /*a0*/) const = 0;
