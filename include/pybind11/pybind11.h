@@ -3093,18 +3093,6 @@ function get_override(const T *this_ptr, const char *name) {
         return cname::fn(__VA_ARGS__);                                                            \
     } while (false)
 
-/** \rst
-    Macro for pure virtual functions, this function is identical to
-    :c:macro:`PYBIND11_OVERRIDE_NAME`, except that it throws if no override can be found.
-\endrst */
-#define PYBIND11_OVERRIDE_PURE_NAME(ret_type, cname, name, fn, ...)                               \
-    do {                                                                                          \
-        PYBIND11_OVERRIDE_IMPL(                                                                   \
-            override, PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__);          \
-        pybind11::pybind11_fail(                                                                  \
-            "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
-    } while (false)
-
 // https://stackoverflow.com/questions/5134523/msvc-doesnt-expand-va-args-correctly
 // Not using `#if defined(_MSC_VER)` here to have only one implementation to test and debug.
 #define PYBIND11_PP_EXPAND(x) x
@@ -3122,16 +3110,24 @@ function get_override(const T *this_ptr, const char *name) {
         return cname::fn(PYBIND11_STRIP_FIRST_ARG(__VA_ARGS__));                                  \
     } while (false)
 
-#define PYBIND11_OVERRIDE_PURE_NAME_RVPP(ret_type, cname, name, fn, ...)                          \
+#define PYBIND11_OVERRIDE_PURE_NAME_IMPL(override_call, ret_type, cname, name, fn, ...)           \
     do {                                                                                          \
-        PYBIND11_OVERRIDE_IMPL(override.call_with_policies,                                       \
-                               PYBIND11_TYPE(ret_type),                                           \
-                               PYBIND11_TYPE(cname),                                              \
-                               name,                                                              \
-                               __VA_ARGS__);                                                      \
+        PYBIND11_OVERRIDE_IMPL(                                                                   \
+            override_call, PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__);     \
         pybind11::pybind11_fail(                                                                  \
             "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
     } while (false)
+
+/** \rst
+    Macro for pure virtual functions, this function is identical to
+    :c:macro:`PYBIND11_OVERRIDE_NAME`, except that it throws if no override can be found.
+\endrst */
+#define PYBIND11_OVERRIDE_PURE_NAME(ret_type, cname, name, fn, ...)                               \
+    PYBIND11_OVERRIDE_PURE_NAME_IMPL(override, ret_type, cname, name, fn, __VA_ARGS__)
+
+#define PYBIND11_OVERRIDE_PURE_NAME_RVPP(ret_type, cname, name, fn, ...)                          \
+    PYBIND11_OVERRIDE_PURE_NAME_IMPL(                                                             \
+        override.call_with_policies, ret_type, cname, name, fn, __VA_ARGS__)
 
 /** \rst
     Macro to populate the virtual method in the trampoline class. This macro tries to look up the
