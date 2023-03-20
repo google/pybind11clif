@@ -3053,13 +3053,13 @@ function get_override(const T *this_ptr, const char *name) {
     return tinfo ? detail::get_type_override(this_ptr, tinfo, name) : function();
 }
 
-#define PYBIND11_OVERRIDE_IMPL(ret_type, cname, name, ...)                                        \
+#define PYBIND11_OVERRIDE_IMPL(override_call, ret_type, cname, name, ...)                         \
     do {                                                                                          \
         pybind11::gil_scoped_acquire gil;                                                         \
         pybind11::function override                                                               \
             = pybind11::get_override(static_cast<const cname *>(this), name);                     \
         if (override) {                                                                           \
-            auto o = override(__VA_ARGS__);                                                       \
+            auto o = override_call(__VA_ARGS__);                                                  \
             if (pybind11::detail::cast_is_temporary_value_reference<ret_type>::value) {           \
                 static pybind11::detail::override_caster_t<ret_type> caster;                      \
                 return pybind11::detail::cast_ref<ret_type>(std::move(o), caster);                \
@@ -3088,8 +3088,34 @@ function get_override(const T *this_ptr, const char *name) {
 \endrst */
 #define PYBIND11_OVERRIDE_NAME(ret_type, cname, name, fn, ...)                                    \
     do {                                                                                          \
-        PYBIND11_OVERRIDE_IMPL(PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__); \
+        PYBIND11_OVERRIDE_IMPL(                                                                   \
+            override, PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__);          \
         return cname::fn(__VA_ARGS__);                                                            \
+    } while (false)
+
+// https://stackoverflow.com/questions/5134523/msvc-doesnt-expand-va-args-correctly
+// Not using `#if defined(_MSC_VER)` here to have only one implementation to test and debug.
+#define PYBIND11_PP_EXPAND(x) x
+#define PYBIND11_STRIP_FIRST_ARG_IMPL(A, ...) __VA_ARGS__
+#define PYBIND11_STRIP_FIRST_ARG(...)                                                             \
+    PYBIND11_PP_EXPAND(PYBIND11_STRIP_FIRST_ARG_IMPL(__VA_ARGS__))
+
+#define PYBIND11_OVERRIDE_NAME_RVPP(ret_type, cname, name, fn, ...)                               \
+    do {                                                                                          \
+        PYBIND11_OVERRIDE_IMPL(override.call_with_policies,                                       \
+                               PYBIND11_TYPE(ret_type),                                           \
+                               PYBIND11_TYPE(cname),                                              \
+                               name,                                                              \
+                               __VA_ARGS__);                                                      \
+        return cname::fn(PYBIND11_STRIP_FIRST_ARG(__VA_ARGS__));                                  \
+    } while (false)
+
+#define PYBIND11_OVERRIDE_PURE_NAME_IMPL(override_call, ret_type, cname, name, fn, ...)           \
+    do {                                                                                          \
+        PYBIND11_OVERRIDE_IMPL(                                                                   \
+            override_call, PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__);     \
+        pybind11::pybind11_fail(                                                                  \
+            "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
     } while (false)
 
 /** \rst
@@ -3097,11 +3123,11 @@ function get_override(const T *this_ptr, const char *name) {
     :c:macro:`PYBIND11_OVERRIDE_NAME`, except that it throws if no override can be found.
 \endrst */
 #define PYBIND11_OVERRIDE_PURE_NAME(ret_type, cname, name, fn, ...)                               \
-    do {                                                                                          \
-        PYBIND11_OVERRIDE_IMPL(PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__); \
-        pybind11::pybind11_fail(                                                                  \
-            "Tried to call pure virtual function \"" PYBIND11_STRINGIFY(cname) "::" name "\"");   \
-    } while (false)
+    PYBIND11_OVERRIDE_PURE_NAME_IMPL(override, ret_type, cname, name, fn, __VA_ARGS__)
+
+#define PYBIND11_OVERRIDE_PURE_NAME_RVPP(ret_type, cname, name, fn, ...)                          \
+    PYBIND11_OVERRIDE_PURE_NAME_IMPL(                                                             \
+        override.call_with_policies, ret_type, cname, name, fn, __VA_ARGS__)
 
 /** \rst
     Macro to populate the virtual method in the trampoline class. This macro tries to look up the
@@ -3153,7 +3179,8 @@ inline function get_overload(const T *this_ptr, const char *name) {
 }
 
 #define PYBIND11_OVERLOAD_INT(ret_type, cname, name, ...)                                         \
-    PYBIND11_OVERRIDE_IMPL(PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__)
+    PYBIND11_OVERRIDE_IMPL(                                                                       \
+        override, PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, __VA_ARGS__)
 #define PYBIND11_OVERLOAD_NAME(ret_type, cname, name, fn, ...)                                    \
     PYBIND11_OVERRIDE_NAME(PYBIND11_TYPE(ret_type), PYBIND11_TYPE(cname), name, fn, __VA_ARGS__)
 #define PYBIND11_OVERLOAD_PURE_NAME(ret_type, cname, name, fn, ...)                               \

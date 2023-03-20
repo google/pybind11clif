@@ -1234,20 +1234,23 @@ T cast(const handle &handle) {
 // C++ type -> py::object
 template <typename T, detail::enable_if_t<!detail::is_pyobject<T>::value, int> = 0>
 object cast(T &&value,
-            return_value_policy policy = return_value_policy::automatic_reference,
+            const return_value_policy_pack &rvpp = return_value_policy::automatic_reference,
             handle parent = handle()) {
     using no_ref_T = typename std::remove_reference<T>::type;
-    if (policy == return_value_policy::automatic) {
-        policy = std::is_pointer<no_ref_T>::value     ? return_value_policy::take_ownership
-                 : std::is_lvalue_reference<T>::value ? return_value_policy::copy
-                                                      : return_value_policy::move;
-    } else if (policy == return_value_policy::automatic_reference) {
-        policy = std::is_pointer<no_ref_T>::value     ? return_value_policy::reference
-                 : std::is_lvalue_reference<T>::value ? return_value_policy::copy
-                                                      : return_value_policy::move;
+    return_value_policy_pack rvpp_local = rvpp;
+    if (rvpp.policy == return_value_policy::automatic) {
+        auto policy = std::is_pointer<no_ref_T>::value     ? return_value_policy::take_ownership
+                      : std::is_lvalue_reference<T>::value ? return_value_policy::copy
+                                                           : return_value_policy::move;
+        rvpp_local = rvpp_local.override_policy(policy);
+    } else if (rvpp.policy == return_value_policy::automatic_reference) {
+        auto policy = std::is_pointer<no_ref_T>::value     ? return_value_policy::reference
+                      : std::is_lvalue_reference<T>::value ? return_value_policy::copy
+                                                           : return_value_policy::move;
+        rvpp_local = rvpp_local.override_policy(policy);
     }
     return reinterpret_steal<object>(
-        detail::make_caster<T>::cast(std::forward<T>(value), policy, parent));
+        detail::make_caster<T>::cast(std::forward<T>(value), rvpp_local, parent));
 }
 
 template <typename T>

@@ -10,6 +10,10 @@ from pybind11_tests import return_value_policy_pack as m
         (m.return_tuple_bytes_bytes, (bytes, bytes)),
         (m.return_tuple_str_bytes, (str, bytes)),
         (m.return_tuple_bytes_str, (bytes, str)),
+        (m.cast_tuple_str_str, (str, str)),
+        (m.cast_tuple_bytes_bytes, (bytes, bytes)),
+        (m.cast_tuple_str_bytes, (str, bytes)),
+        (m.cast_tuple_bytes_str, (bytes, str)),
     ],
 )
 def test_return_pair_string(func, expected):
@@ -247,3 +251,80 @@ def test_nested_callbacks_is_b():
     assert m.call_level_2_callback_is_b(cb_2) == 20120
     assert m.call_level_3_callback_is_b(cb_3) == 40101
     assert m.call_level_4_callback_is_b(cb_4) == 60120
+
+
+CALL_VIRTUAL_OVERRIDES_WHICH_EXPECTED = [
+    ("pure", 9),
+    ("pure_s", 10),
+    ("pure_b", 11),
+    ("pure_sb", 101),
+    ("pure_bs", 110),
+    ("nonp", 8),
+    ("nonp_s", 20),
+    ("nonp_b", 21),
+    ("nonp_sb", 201),
+    ("nonp_bs", 210),
+]
+
+
+@pytest.mark.parametrize(("which", "expected"), CALL_VIRTUAL_OVERRIDES_WHICH_EXPECTED)
+def test_virtual_overrides_drvd(which, expected):
+    class Drvd(m.VirtualBase):
+        def py_pure(self):
+            return 9
+
+        def py_pure_s(self, a0):
+            assert isinstance(a0, str)
+            return 10
+
+        def py_pure_b(self, a0):
+            assert isinstance(a0, bytes)
+            return 11
+
+        def py_pure_sb(self, a0, a1):
+            assert isinstance(a0, str)
+            assert isinstance(a1, bytes)
+            return 101
+
+        def py_pure_bs(self, a0, a1):
+            assert isinstance(a0, bytes)
+            assert isinstance(a1, str)
+            return 110
+
+        def py_nonp(self):
+            return 8
+
+        def py_nonp_s(self, a0):
+            assert isinstance(a0, str)
+            return 20
+
+        def py_nonp_b(self, a0):
+            assert isinstance(a0, bytes)
+            return 21
+
+        def py_nonp_sb(self, a0, a1):
+            assert isinstance(a0, str)
+            assert isinstance(a1, bytes)
+            return 201
+
+        def py_nonp_bs(self, a0, a1):
+            assert isinstance(a0, bytes)
+            assert isinstance(a1, str)
+            return 210
+
+    d = Drvd()
+    assert m.call_virtual_override(d, which) == expected
+
+
+@pytest.mark.parametrize(("which", "expected"), CALL_VIRTUAL_OVERRIDES_WHICH_EXPECTED)
+def test_virtual_overrides_base(which, expected):
+    b = m.VirtualBase()
+    if which.startswith("pure"):
+        with pytest.raises(RuntimeError) as exc_info:
+            m.call_virtual_override(b, which)
+        assert (
+            str(exc_info.value)
+            == f'Tried to call pure virtual function "VirtualBase::py_{which}"'
+        )
+    else:
+        assert m.call_virtual_override(b, which) == -expected
