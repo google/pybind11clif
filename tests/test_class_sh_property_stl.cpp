@@ -3,6 +3,7 @@
 
 #include "pybind11_tests.h"
 
+#include <cstddef>
 #include <vector>
 
 namespace test_class_sh_property_stl {
@@ -20,6 +21,11 @@ struct FieldHolder {
 struct VectorFieldHolder {
     std::vector<FieldHolder> vec_fld_hld;
     VectorFieldHolder() { vec_fld_hld.push_back(FieldHolder{Field{300}}); }
+    void reset_at(std::size_t index, int wrapped_int) {
+        if (index < vec_fld_hld.size()) {
+            vec_fld_hld[index].fld.wrapped_int = wrapped_int;
+        }
+    }
 };
 
 } // namespace test_class_sh_property_stl
@@ -37,6 +43,7 @@ TEST_SUBMODULE(class_sh_property_stl, m) {
 
     py::classh<VectorFieldHolder>(m, "VectorFieldHolder")
         .def(py::init<>())
+        .def("reset_at", &VectorFieldHolder::reset_at)
         .def_readwrite("vec_fld_hld_ref", &VectorFieldHolder::vec_fld_hld)
         .def_readwrite("vec_fld_hld_cpy",
                        &VectorFieldHolder::vec_fld_hld,
