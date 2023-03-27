@@ -20,8 +20,7 @@ PYBIND11_NAMESPACE_BEGIN(detail)
 
 inline object get_python_state_dict() {
     object state_dict;
-#if PY_VERSION_HEX < 0x03080000                                                                   \
-    || (PYBIND11_INTERNALS_VERSION <= 4 && PY_VERSION_HEX < 0x030C0000) || defined(PYPY_VERSION)
+#if PYBIND11_INTERNALS_VERSION <= 4 || PY_VERSION_HEX < 0x03080000 || defined(PYPY_VERSION)
     state_dict = reinterpret_borrow<object>(PyEval_GetBuiltins());
 #else
 #    if PY_VERSION_HEX < 0x03090000
