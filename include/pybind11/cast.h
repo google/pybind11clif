@@ -1207,7 +1207,11 @@ make_caster<T> load_type(const handle &handle) {
 PYBIND11_NAMESPACE_END(detail)
 
 // pytype -> C++ type
-template <typename T, detail::enable_if_t<!detail::is_pyobject<T>::value, int> = 0>
+template <typename T,
+          detail::enable_if_t<!detail::is_pyobject<T>::value
+                                  && !detail::is_same_ignoring_cvref<T, PyObject *>::value,
+                              int>
+          = 0>
 T cast(const handle &handle) {
     using namespace detail;
     constexpr bool is_enum_cast = type_uses_type_caster_enum_type<intrinsic_t<T>>::value;
@@ -1229,6 +1233,12 @@ T cast(const handle &handle) {
 template <typename T, detail::enable_if_t<detail::is_pyobject<T>::value, int> = 0>
 T cast(const handle &handle) {
     return T(reinterpret_borrow<object>(handle));
+}
+
+template <typename T,
+          detail::enable_if_t<detail::is_same_ignoring_cvref<T, PyObject *>::value, int> = 0>
+T cast(const handle &handle) {
+    return handle.ptr();
 }
 
 // C++ type -> py::object
