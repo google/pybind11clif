@@ -21,12 +21,9 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
     m.def("pass_pyobject_ptr", [](PyObject *obj) { return bool(PyTuple_CheckExact(obj)); });
 
     m.def("call_callback_with_object_return",
-          [](const std::function<py::object(int mode)> &cb, int mode) { return cb(mode); });
-    m.def("call_callback_with_handle_return",
-          [](const std::function<py::handle(int mode)> &cb, int mode) { return cb(mode); });
-    //
+          [](const std::function<py::object(int)> &cb, int value) { return cb(value); });
     m.def("call_callback_with_pyobject_ptr_return",
-          [](const std::function<PyObject *(int mode)> &cb, int mode) { return cb(mode); });
+          [](const std::function<PyObject *(int)> &cb, int value) { return cb(value); });
     m.def("call_callback_with_pyobject_ptr_arg",
           [](const std::function<bool(PyObject *)> &cb, py::handle obj) { return cb(obj.ptr()); });
 
