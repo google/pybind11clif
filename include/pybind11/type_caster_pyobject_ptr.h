@@ -36,8 +36,12 @@ public:
             || policy == return_value_policy::_clif_automatic) {
             return src;
         }
-        Py_INCREF(src);
-        return src;
+        if (policy == return_value_policy::reference
+            || policy == return_value_policy::automatic_reference) {
+            return handle(src).inc_ref();
+        }
+        pybind11_fail("type_caster<PyObject>::cast(): unsupported return_value_policy: "
+                      + std::to_string(static_cast<int>(policy)));
     }
 
     bool load(handle src, bool) {

@@ -22,10 +22,15 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
 
     m.def("call_callback_with_object_return",
           [](const std::function<py::object(int)> &cb, int value) { return cb(value); });
-    m.def("call_callback_with_pyobject_ptr_return",
-          [](const std::function<PyObject *(int)> &cb, int value) { return cb(value); });
-    m.def("call_callback_with_pyobject_ptr_arg",
-          [](const std::function<bool(PyObject *)> &cb, py::handle obj) { return cb(obj.ptr()); });
+    m.def(
+        "call_callback_with_pyobject_ptr_return",
+        [](const std::function<PyObject *(int)> &cb, int value) { return cb(value); },
+        py::return_value_policy::take_ownership);
+    m.def(
+        "call_callback_with_pyobject_ptr_arg",
+        [](const std::function<bool(PyObject *)> &cb, py::handle obj) { return cb(obj.ptr()); },
+        py::arg("cb"), // This triggers return_value_policy::automatic_reference
+        py::arg("obj"));
 
     m.def("cast_to_pyobject_ptr_nullptr", [](bool set_error) {
         if (set_error) {
