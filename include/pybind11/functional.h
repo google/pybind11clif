@@ -43,7 +43,7 @@ struct func_handle {
 struct func_wrapper_base {
     func_handle hfunc;
     return_value_policy_pack rvpp;
-    explicit func_wrapper_base(func_handle &&hf, const return_value_policy_pack &rvpp) noexcept
+    func_wrapper_base(func_handle &&hf, const return_value_policy_pack &rvpp) noexcept
         : hfunc(hf), rvpp(rvpp) {}
 };
 
