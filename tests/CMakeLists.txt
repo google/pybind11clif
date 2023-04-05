@@ -181,6 +181,7 @@ set(PYBIND11_TEST_FILES
     test_type_caster_odr_guard_1
     test_type_caster_odr_guard_2
     test_type_caster_pyobject_ptr
+    test_type_caster_std_function_specializations
     test_union
     test_virtual_functions)
 
