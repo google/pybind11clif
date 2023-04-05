@@ -1148,6 +1148,15 @@ struct format_descriptor<T, detail::enable_if_t<std::is_arithmetic<T>::value>> {
     static std::string format() { return std::string(1, c); }
 };
 
+template <typename T>
+struct format_descriptor<
+    T,
+    detail::enable_if_t<detail::is_same_ignoring_cvref<T, PyObject *>::value>> {
+    static constexpr const char c = 'O';
+    static constexpr const char value[2] = {c, '\0'};
+    static std::string format() { return std::string(1, c); }
+};
+
 #if !defined(PYBIND11_CPP17)
 
 template <typename T>
