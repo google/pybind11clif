@@ -320,7 +320,7 @@ def test_error_already_set_what_with_happy_exceptions(
 @pytest.mark.skipif(
     # Intentionally very specific:
     "sys.version_info == (3, 12, 0, 'alpha', 6)",
-    reason="Suspected bug in 3.12alpha6",
+    reason="WIP: https://github.com/python/cpython/issues/102594",
 )
 @pytest.mark.skipif("env.PYPY", reason="PyErr_NormalizeException Segmentation fault")
 def test_flaky_exception_failure_point_init():
