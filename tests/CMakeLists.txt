@@ -168,6 +168,7 @@ set(PYBIND11_TEST_FILES
     test_numpy_vectorize
     test_opaque_types
     test_operator_overloading
+    test_pick_alt_struct
     test_pickling
     test_pytypes
     test_return_value_policy_override
