@@ -183,6 +183,7 @@ set(PYBIND11_TEST_FILES
     test_type_caster_pyobject_ptr
     test_type_caster_std_function_specializations
     test_union
+    test_vector_unique_ptr_member
     test_virtual_functions)
 
 # Invoking cmake with something like:
