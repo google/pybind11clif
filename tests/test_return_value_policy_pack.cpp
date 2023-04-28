@@ -18,7 +18,8 @@
 #    include <variant>
 #endif
 
-namespace {
+namespace pybind11_tests {
+namespace return_value_policy_pack {
 
 using PairString = std::pair<std::string, std::string>;
 
@@ -223,7 +224,10 @@ int call_virtual_override(const VirtualBase &base, const std::string &which) {
     return -99; // Invalid which.
 }
 
-} // namespace
+} // namespace return_value_policy_pack
+} // namespace pybind11_tests
+
+using namespace pybind11_tests::return_value_policy_pack;
 
 TEST_SUBMODULE(return_value_policy_pack, m) {
     static constexpr auto rvpc = py::return_value_policy::_clif_automatic;
