@@ -606,7 +606,8 @@ struct from_python_policies {
         : rvpp(return_value_policy::automatic_reference), convert(true), none(true) {}
 
     // NOLINTNEXTLINE(google-explicit-constructor)
-    from_python_policies(bool convert, bool none = true) : convert(convert), none(none) {}
+    from_python_policies(bool convert, bool none = true)
+        : rvpp(return_value_policy::automatic_reference), convert(convert), none(none) {}
 
     // NOLINTNEXTLINE(google-explicit-constructor)
     from_python_policies(const return_value_policy_pack &rvpp)
