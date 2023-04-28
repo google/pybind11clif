@@ -224,6 +224,15 @@ int call_virtual_override(const VirtualBase &base, const std::string &which) {
     return -99; // Invalid which.
 }
 
+struct IntOwner {
+    int val = 3;
+};
+
+int call_callback_pass_int_owner_const_ptr(const std::function<int(const IntOwner *)> &cb) {
+    IntOwner int_owner;
+    return cb(&int_owner) + 500;
+}
+
 } // namespace return_value_policy_pack
 } // namespace pybind11_tests
 
@@ -426,4 +435,8 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         .def("py_nonp_bs", &VirtualBase::nonp_bs, py::arg("a0"), py::arg("a1"));
 
     m.def("call_virtual_override", call_virtual_override);
+
+    py::class_<IntOwner>(m, "IntOwner").def_readonly("val", &IntOwner::val);
+
+    m.def("call_callback_pass_int_owner_const_ptr", call_callback_pass_int_owner_const_ptr);
 }
