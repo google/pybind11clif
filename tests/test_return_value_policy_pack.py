@@ -328,3 +328,10 @@ def test_virtual_overrides_base(which, expected):
         )
     else:
         assert m.call_virtual_override(b, which) == -expected
+
+
+def test_call_callback_pass_int_owner():
+    def cb(int_owner):
+        return int_owner.val + 40
+
+    assert m.call_callback_pass_int_owner_const_ptr(cb) == 543
