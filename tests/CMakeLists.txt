@@ -176,6 +176,7 @@ set(PYBIND11_TEST_FILES
     test_smart_ptr
     test_stl
     test_stl_binders
+    test_stl_no_default_ctor
     test_tagbased_polymorphic
     test_thread
     test_type_caster_odr_guard_1
