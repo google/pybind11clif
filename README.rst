@@ -2,30 +2,29 @@
 pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
 ==========================================================================
 
-**WARNING**
+Warning
+=======
 
-* Technical Integrity of the pywrapcc main branch is consistently very high, but
+- Technical Integrity of the pywrapcc main branch is consistently very high, but
 
-* **New Features are still very much in flux**.
+- **New Features are still very much in flux**.
 
-Regarding Technical Integrity:
-------------------------------
+**Re: Technical Integrity**
 
 This branch is used in Google-internally to build thousands of extensions that are deployed to production. It is also regularly tested with all CLANG sanitizers.
 
-Regarding New Features:
------------------------
+**Re: New Features**
 
 0. pywrapcc is meant to be a fully backward-compatible superset of `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_. If not that's an accident, please let us know by creating an issue.
 
-1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, we will add or evolve new features without taking external use cases into account. (Note that we can make global changes fairly easily internally, but not externally.)
+1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, we will add or evolve new features without taking external use cases into account. — This is because we can make global changes fairly easily internally, but not externally.
 
 2. After the PyCLIF-pybind11 work is completed we will commit to feature stability and update the documentation.
 
-Outstanding new features: ``py::native_enum`` (#30005), ``py::return_value_policy_pack`` (#30011), enhanced pybind11/functional.h API (#30022)
+Outstanding new features: ``py::native_enum`` (google/pywrapcc#30005), ``py::return_value_policy_pack`` (google/pywrapcc#30011), enhanced pybind11/functional.h API (google/pywrapcc#30022)
 
 Background / Overview
----------------------
+=====================
 
 This pywrapcc repo originated from the `pybind11 smart_holder <https://github.com/pybind/pybind11/tree/smart_holder>`_ branch. It was created with two important goals in mind:
 
@@ -42,10 +41,9 @@ Obviously, neither repeatedly breaking interoperability with existing PyPI wheel
 
 A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs, more than arbitrary "let's change some names" decisions. ABI compatibility will be phased out gradually, on time scales similar to Python EOL policies. Eventually there may be little or no "pybind11" left in pywrapcc, but this will certainly take some time.
 
-________
 
-ORIGINAL pybind11 README, TO BE UPDATED.
-________
+ORIGINAL pybind11 README below (to be updated)
+==============================================
 
 **pybind11** is a lightweight header-only library that exposes C++ types
 in Python and vice versa, mainly to create Python bindings of existing
