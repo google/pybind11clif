@@ -2,24 +2,16 @@
 pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
 ==========================================================================
 
-Warning
-=======
+Warning — New features are still very much in flux
+==================================================
 
-- Technical Integrity of the pywrapcc main branch is consistently very high, but
-
-- **New Features are still very much in flux**.
-
-**Re: Technical Integrity**
-
-This branch is used in Google-internally to build thousands of extensions that are deployed to production. It is also regularly tested with all CLANG sanitizers.
-
-**Re: New Features**
+This branch is used Google-internally to build thousands of extensions that are deployed to production and is also regularly tested with all CLANG sanitizers. However, feature stability guarantees are currently limited in this way:
 
 0. pywrapcc is meant to be a fully backward-compatible superset of `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_. If not, that is not intended, please let us know by creating an issue.
 
-1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, we will add or evolve new features without taking external use cases into account. — This is because we can globally test changes fairly easily internally, but not externally.
+1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, it is impractical for us to take external use cases into account when evolving new features. This is because we can globally test changes fairly easily internally, but not externally.
 
-2. After the PyCLIF-pybind11 work is completed we will commit to feature stability and update the documentation.
+2. After the PyCLIF-pybind11 work is completed we will commit to greater feature stability and update the documentation.
 
 Outstanding new features: ``py::native_enum`` (google/pywrapcc#30005), ``py::return_value_policy_pack`` (google/pywrapcc#30011), enhanced pybind11/functional.h API (google/pywrapcc#30022)
 
