@@ -15,9 +15,9 @@ This branch is used in Google-internally to build thousands of extensions that a
 
 **Re: New Features**
 
-0. pywrapcc is meant to be a fully backward-compatible superset of `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_. If not that's an accident, please let us know by creating an issue.
+0. pywrapcc is meant to be a fully backward-compatible superset of `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_. If not, that is not intended, please let us know by creating an issue.
 
-1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, we will add or evolve new features without taking external use cases into account. — This is because we can make global changes fairly easily internally, but not externally.
+1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, we will add or evolve new features without taking external use cases into account. — This is because we can globally test changes fairly easily internally, but not externally.
 
 2. After the PyCLIF-pybind11 work is completed we will commit to feature stability and update the documentation.
 
