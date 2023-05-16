@@ -627,6 +627,8 @@ struct from_python_policies {
     }
 };
 
+#define PYBIND11_HAS_RETURN_VALUE_POLICY_PACK
+
 PYBIND11_NAMESPACE_BEGIN(detail)
 
 inline static constexpr int log2(size_t n, int k = 0) {

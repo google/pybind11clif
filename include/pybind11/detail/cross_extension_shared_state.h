@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define PYBIND11_HAS_CROSS_EXTENSION_SHARED_STATE
+
 #include "common.h"
 
 #if defined(WITH_THREAD) && defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)

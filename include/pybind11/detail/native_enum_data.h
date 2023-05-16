@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define PYBIND11_HAS_NATIVE_ENUM
+
 #include "../pytypes.h"
 #include "abi_platform_id.h"
 #include "common.h"
