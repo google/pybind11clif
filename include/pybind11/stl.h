@@ -102,18 +102,18 @@ public:
         if (!convert) {
             return false;
         }
-        if (isinstance<iterable>(src)) {
-            auto s = reinterpret_borrow<iterable>(src);
+        if (isinstance<sequence>(src)) {
+            auto s = reinterpret_borrow<sequence>(src);
             value.clear();
+            reserve_maybe(s, &value);
             if (!insert_elements(s, convert)) {
                 return false;
             }
             return true;
         }
-        if (isinstance<sequence>(src)) {
-            auto s = reinterpret_borrow<sequence>(src);
+        if (isinstance<iterable>(src)) {
+            auto s = reinterpret_borrow<iterable>(src);
             value.clear();
-            reserve_maybe(s, &value);
             if (!insert_elements(s, convert)) {
                 return false;
             }
@@ -204,18 +204,6 @@ template <typename Type, typename Value>
 struct list_caster {
     using value_conv = make_caster<Value>;
 
-    template <typename ContainerType>
-    bool insert_elements(const ContainerType &container, bool convert) {
-        for (auto it : container) {
-            value_conv conv;
-            if (!conv.load(it, convert)) {
-                return false;
-            }
-            value.push_back(cast_op<Value &&>(std::move(conv)));
-        }
-        return true;
-    }
-
     bool load(handle src, bool convert) {
         if (isinstance<bytes>(src) || isinstance<str>(src) || isinstance<dict>(src)) {
             return false;
@@ -249,6 +237,18 @@ private:
         value.reserve(s.size());
     }
     void reserve_maybe(const sequence &, void *) {}
+
+    template <typename ContainerType>
+    bool insert_elements(const ContainerType &container, bool convert) {
+        for (auto it : container) {
+            value_conv conv;
+            if (!conv.load(it, convert)) {
+                return false;
+            }
+            value.push_back(cast_op<Value &&>(std::move(conv)));
+        }
+        return true;
+    }
 
 public:
     template <typename T>
