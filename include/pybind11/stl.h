@@ -67,22 +67,59 @@ private:
     }
     void reserve_maybe(const anyset &, void *) {}
 
-public:
-    bool load(handle src, bool convert) {
-        if (!isinstance<anyset>(src)) {
-            return false;
-        }
-        auto s = reinterpret_borrow<anyset>(src);
-        value.clear();
-        reserve_maybe(s, &value);
-        for (auto entry : s) {
+    template <typename T = Type, enable_if_t<has_reserve_method<T>::value, int> = 0>
+    void reserve_maybe(const sequence &s, Type *) {
+        value.reserve(s.size());
+    }
+    void reserve_maybe(const sequence &, void *) {}
+
+    template <typename ContainerType>
+    bool insert_elements(const ContainerType &container, bool convert) {
+        for (auto it : container) {
             key_conv conv;
-            if (!conv.load(entry, convert)) {
+            if (!conv.load(it, convert)) {
                 return false;
             }
             value.insert(cast_op<Key &&>(std::move(conv)));
         }
         return true;
+    }
+
+public:
+    bool load(handle src, bool convert) {
+        if (isinstance<bytes>(src) || isinstance<str>(src) || isinstance<dict>(src)) {
+            return false;
+        }
+        if (isinstance<anyset>(src)) {
+            auto s = reinterpret_borrow<anyset>(src);
+            value.clear();
+            reserve_maybe(s, &value);
+            if (!insert_elements(s, convert)) {
+                return false;
+            }
+            return true;
+        }
+        if (!convert) {
+            return false;
+        }
+        if (isinstance<sequence>(src)) {
+            auto s = reinterpret_borrow<sequence>(src);
+            value.clear();
+            reserve_maybe(s, &value);
+            if (!insert_elements(s, convert)) {
+                return false;
+            }
+            return true;
+        }
+        if (isinstance<iterable>(src)) {
+            auto s = reinterpret_borrow<iterable>(src);
+            value.clear();
+            if (!insert_elements(s, convert)) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     template <typename T>
@@ -168,20 +205,30 @@ struct list_caster {
     using value_conv = make_caster<Value>;
 
     bool load(handle src, bool convert) {
-        if (!isinstance<sequence>(src) || isinstance<bytes>(src) || isinstance<str>(src)) {
+        if (isinstance<bytes>(src) || isinstance<str>(src) || isinstance<dict>(src)) {
             return false;
         }
-        auto s = reinterpret_borrow<sequence>(src);
-        value.clear();
-        reserve_maybe(s, &value);
-        for (auto it : s) {
-            value_conv conv;
-            if (!conv.load(it, convert)) {
+        if (isinstance<sequence>(src)) {
+            auto s = reinterpret_borrow<sequence>(src);
+            value.clear();
+            reserve_maybe(s, &value);
+            if (!insert_elements(s, convert)) {
                 return false;
             }
-            value.push_back(cast_op<Value &&>(std::move(conv)));
+            return true;
         }
-        return true;
+        if (!convert) {
+            return false;
+        }
+        if (isinstance<iterable>(src)) {
+            auto s = reinterpret_borrow<iterable>(src);
+            value.clear();
+            if (!insert_elements(s, convert)) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
 private:
@@ -190,6 +237,18 @@ private:
         value.reserve(s.size());
     }
     void reserve_maybe(const sequence &, void *) {}
+
+    template <typename ContainerType>
+    bool insert_elements(const ContainerType &container, bool convert) {
+        for (auto it : container) {
+            value_conv conv;
+            if (!conv.load(it, convert)) {
+                return false;
+            }
+            value.push_back(cast_op<Value &&>(std::move(conv)));
+        }
+        return true;
+    }
 
 public:
     template <typename T>

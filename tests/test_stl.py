@@ -22,6 +22,14 @@ def test_vector(doc):
     # Test regression caused by 936: pointers to stl containers weren't castable
     assert m.cast_ptr_vector() == ["lvalue", "lvalue"]
 
+    # pywrapcc: Also accept Python iterables, except bytes, strings and
+    # dictionaries, as C++ vector.
+    assert m.load_vector(set(lst))
+    assert m.load_vector(iter(lst))
+    pytest.raises(TypeError, m.load_vector, dict(zip(lst, lst)))
+    pytest.raises(TypeError, m.load_vector, "foo")
+    pytest.raises(TypeError, m.load_vector, b"foo")
+
 
 def test_deque():
     """std::deque <-> list"""
@@ -77,6 +85,14 @@ def test_set(doc):
 
     assert doc(m.cast_set) == "cast_set() -> Set[str]"
     assert doc(m.load_set) == "load_set(arg0: Set[str]) -> bool"
+
+    # pywrapcc: Also accept Python iterables, except bytes, strings and
+    # dictionaries, as C++ set.
+    assert m.load_set(list(s))
+    assert m.load_set(iter(s))
+    pytest.raises(TypeError, m.load_set, dict(zip(s, s)))
+    pytest.raises(TypeError, m.load_set, "foo")
+    pytest.raises(TypeError, m.load_set, b"foo")
 
 
 def test_recursive_casting():
