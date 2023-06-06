@@ -549,6 +549,13 @@ TEST_SUBMODULE(stl, m) {
         // Without explicitly specifying `take_ownership`, this function leaks.
         py::return_value_policy::take_ownership);
 
+    m.def("pass_std_vector_int", [](const std::vector<int> &vec_int) { return vec_int.size(); });
+    m.def("pass_std_vector_pair_int", [](const std::vector<std::pair<int, int>> &vec_pair_int) {
+        return vec_pair_int.size();
+    });
+    m.def("pass_std_set_int", [](const std::set<int> &set_int) { return set_int.size(); });
+    m.def("pass_std_map_int", [](const std::map<int, int> &map_int) { return map_int.size(); });
+
     // test return_value_policy::_return_as_bytes
     m.def(
         "invalid_utf8_string_array_as_bytes",

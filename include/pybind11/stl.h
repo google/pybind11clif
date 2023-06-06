@@ -36,6 +36,47 @@
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 PYBIND11_NAMESPACE_BEGIN(detail)
 
+//
+// Begin: Code developed under https://github.com/google/clif/blob/main/clif/python/runtime.cc
+//        (currently unpublished)
+//
+
+inline bool PyObjectIsInstanceWithOneOfTpNames(PyObject *obj,
+                                               std::initializer_list<const char *> tp_names) {
+    if (PyType_Check(obj)) {
+        return false;
+    }
+    const char *obj_tp_name = Py_TYPE(obj)->tp_name;
+    for (const auto *tp_name : tp_names) {
+        if (strcmp(obj_tp_name, tp_name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline bool PyObjectTypeIsConvertibleToStdVector(PyObject *obj) {
+    if (PySequence_Check(obj) != 0) {
+        return !PyUnicode_Check(obj) && !PyBytes_Check(obj);
+    }
+    return (PyGen_Check(obj) != 0) || (PyAnySet_Check(obj) != 0)
+           || PyObjectIsInstanceWithOneOfTpNames(
+               obj, {"dict_keys", "dict_values", "dict_items", "map", "zip"});
+}
+
+inline bool PyObjectTypeIsConvertibleToStdSet(PyObject *obj) {
+    return (PyAnySet_Check(obj) != 0) || PyObjectIsInstanceWithOneOfTpNames(obj, {"dict_keys"});
+}
+
+inline bool PyObjectTypeIsConvertibleToStdMap(PyObject *obj) {
+    return (PyDict_Check(obj) != 0)
+           || ((PyMapping_Check(obj) != 0) && (PyObject_HasAttrString(obj, "items") != 0));
+}
+
+//
+// End: Code developed under https://github.com/google/clif/blob/main/clif/python/runtime.cc
+//
+
 /// Extracts an const lvalue reference or rvalue reference for U based on the type of T (e.g. for
 /// forwarding a container element).  Typically used indirect via forwarded_type(), below.
 template <typename T, typename U>
@@ -62,27 +103,42 @@ struct set_caster {
 
 private:
     template <typename T = Type, enable_if_t<has_reserve_method<T>::value, int> = 0>
-    void reserve_maybe(const anyset &s, Type *) {
+    void reserve_maybe(const sequence &s, Type *) {
         value.reserve(s.size());
     }
-    void reserve_maybe(const anyset &, void *) {}
+    void reserve_maybe(const sequence &, void *) {}
 
-public:
-    bool load(handle src, bool convert) {
-        if (!isinstance<anyset>(src)) {
-            return false;
-        }
-        auto s = reinterpret_borrow<anyset>(src);
+    bool convert_elements(handle seq, bool convert) {
+        auto s = reinterpret_borrow<sequence>(seq);
         value.clear();
         reserve_maybe(s, &value);
-        for (auto entry : s) {
+        for (auto it : seq) {
             key_conv conv;
-            if (!conv.load(entry, convert)) {
+            if (!conv.load(it, convert)) {
                 return false;
             }
             value.insert(cast_op<Key &&>(std::move(conv)));
         }
         return true;
+    }
+
+public:
+    bool load(handle src, bool convert) {
+        if (!PyObjectTypeIsConvertibleToStdSet(src.ptr())) {
+            return false;
+        }
+        if (isinstance<sequence>(src)) {
+            return convert_elements(src, convert);
+        }
+        if (!convert) {
+            return false;
+        }
+        // Designed to be behavior-equivalent to passing tuple(src) from Python:
+        // The conversion to a tuple will first exhaust the iterator object, to ensure that
+        // the iterator is not left in an unpredictable (to the caller) partially-consumed
+        // state.
+        assert(isinstance<iterable>(src));
+        return convert_elements(tuple(reinterpret_borrow<iterable>(src)), convert);
     }
 
     template <typename T>
@@ -117,12 +173,7 @@ private:
     }
     void reserve_maybe(const dict &, void *) {}
 
-public:
-    bool load(handle src, bool convert) {
-        if (!isinstance<dict>(src)) {
-            return false;
-        }
-        auto d = reinterpret_borrow<dict>(src);
+    bool convert_elements(const dict &d, bool convert) {
         value.clear();
         reserve_maybe(d, &value);
         for (auto it : d) {
@@ -134,6 +185,27 @@ public:
             value.emplace(cast_op<Key &&>(std::move(kconv)), cast_op<Value &&>(std::move(vconv)));
         }
         return true;
+    }
+
+public:
+    bool load(handle src, bool convert) {
+        if (!PyObjectTypeIsConvertibleToStdMap(src.ptr())) {
+            return false;
+        }
+        if (isinstance<dict>(src)) {
+            return convert_elements(reinterpret_borrow<dict>(src), convert);
+        }
+        if (!convert) {
+            return false;
+        }
+        // Designed to be behavior-equivalent to passing dict(src.items()) from Python:
+        // The conversion to a dict will first exhaust the iterator object, to ensure that
+        // the iterator is not left in an unpredictable (to the caller) partially-consumed
+        // state.
+        auto items = src.attr("items")();
+        assert(isinstance<iterable>(items));
+        return convert_elements(dict(reinterpret_borrow<iterable>(items)), convert);
+        return false;
     }
 
     template <typename T>
@@ -168,20 +240,21 @@ struct list_caster {
     using value_conv = make_caster<Value>;
 
     bool load(handle src, bool convert) {
-        if (!isinstance<sequence>(src) || isinstance<bytes>(src) || isinstance<str>(src)) {
+        if (!PyObjectTypeIsConvertibleToStdVector(src.ptr())) {
             return false;
         }
-        auto s = reinterpret_borrow<sequence>(src);
-        value.clear();
-        reserve_maybe(s, &value);
-        for (auto it : s) {
-            value_conv conv;
-            if (!conv.load(it, convert)) {
-                return false;
-            }
-            value.push_back(cast_op<Value &&>(std::move(conv)));
+        if (isinstance<sequence>(src)) {
+            return convert_elements(src, convert);
         }
-        return true;
+        if (!convert) {
+            return false;
+        }
+        // Designed to be behavior-equivalent to passing tuple(src) from Python:
+        // The conversion to a tuple will first exhaust the generator object, to ensure that
+        // the generator is not left in an unpredictable (to the caller) partially-consumed
+        // state.
+        assert(isinstance<iterable>(src));
+        return convert_elements(tuple(reinterpret_borrow<iterable>(src)), convert);
     }
 
 private:
@@ -190,6 +263,20 @@ private:
         value.reserve(s.size());
     }
     void reserve_maybe(const sequence &, void *) {}
+
+    bool convert_elements(handle seq, bool convert) {
+        auto s = reinterpret_borrow<sequence>(seq);
+        value.clear();
+        reserve_maybe(s, &value);
+        for (auto it : seq) {
+            value_conv conv;
+            if (!conv.load(it, convert)) {
+                return false;
+            }
+            value.push_back(cast_op<Value &&>(std::move(conv)));
+        }
+        return true;
+    }
 
 public:
     template <typename T>

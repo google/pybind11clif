@@ -378,6 +378,80 @@ def test_return_vector_bool_raw_ptr():
     assert len(v) == 4513
 
 
+def test_pass_std_vector_int():
+    fn = m.pass_std_vector_int
+    assert fn([1, 2]) == 2
+    assert fn((1, 2)) == 2
+    assert fn({1, 2}) == 2
+    assert fn({"x": 1, "y": 2}.values()) == 2
+    assert fn({1: None, 2: None}.keys()) == 2
+    assert fn(i for i in range(3)) == 3
+    assert fn(map(lambda i: i, range(4))) == 4  # noqa: C417
+    with pytest.raises(TypeError):
+        fn({})
+
+
+def test_pass_std_vector_pair_int():
+    fn = m.pass_std_vector_pair_int
+    assert fn({1: 2, 3: 4}.items()) == 2
+    assert fn(zip([1, 2], [3, 4])) == 2
+
+
+def test_pass_std_set_int():
+    fn = m.pass_std_set_int
+    assert fn({1, 2}) == 2
+    assert fn({1: None, 2: None}.keys()) == 2
+    with pytest.raises(TypeError):
+        fn([1, 2])
+    with pytest.raises(TypeError):
+        fn((1, 2))
+    with pytest.raises(TypeError):
+        fn({})
+    with pytest.raises(TypeError):
+        fn(i for i in range(3))
+
+
+def test_list_caster_fully_consumes_generator_object():
+    def gen_mix():
+        yield from [1, 2.0, 3]
+
+    gen_obj = gen_mix()
+    with pytest.raises(TypeError):
+        m.pass_std_vector_int(gen_obj)
+    assert not tuple(gen_obj)
+
+
+class FakePyMappingMissingItems:
+    def __getitem__(self, _):
+        raise RuntimeError("Not expected to be called.")
+
+
+class FakePyMappingWithItems(FakePyMappingMissingItems):
+    def items(self):
+        return ((1, 2), (3, 4))
+
+
+class FakePyMappingBadItems(FakePyMappingMissingItems):
+    def items(self):
+        return ((1, 2), (3, "x"))
+
+
+def test_pass_std_map_int():
+    fn = m.pass_std_map_int
+    assert fn({1: 2, 3: 4}) == 2
+    assert fn(FakePyMappingWithItems()) == 2
+    with pytest.raises(TypeError):
+        fn(FakePyMappingMissingItems())
+    with pytest.raises(TypeError):
+        fn(FakePyMappingBadItems())
+    with pytest.raises(TypeError):
+        fn([])
+
+
+# TODO(rwgk): test_set_caster_fully_consumes_iterator_object
+# TODO(rwgk): test_map_caster_fully_consumes_iterator_object
+
+
 def test_return_as_bytes_policy():
     expected_return_value = b"\xba\xd0\xba\xd0"
     assert m.invalid_utf8_string_array_as_bytes() == [expected_return_value]
