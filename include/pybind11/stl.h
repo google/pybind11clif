@@ -276,11 +276,12 @@ public:
     }
 
     PYBIND11_TYPE_CASTER_RVPP(ArrayType,
-                              const_name("List[") + value_conv::name
+                              const_name<Resizable>(const_name(""), const_name("Annotated["))
+                                  + const_name("List[") + value_conv::name + const_name("]")
                                   + const_name<Resizable>(const_name(""),
-                                                          const_name("[") + const_name<Size>()
-                                                              + const_name("]"))
-                                  + const_name("]"));
+                                                          const_name(", FixedSize(")
+                                                              + const_name<Size>()
+                                                              + const_name(")]")));
 };
 
 template <typename Type, size_t Size>
