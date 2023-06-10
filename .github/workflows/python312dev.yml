@@ -41,7 +41,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install --prefer-binary -r tests/requirements.txt
         python -m pip install --upgrade setuptools  # To provide distutils for numpy (2023-06-10)
-        python -m pip install --no-binary --upgrade numpy  # SLOW
+        python -m pip install --upgrade --no-binary numpy  # SLOW
     #   python -m pip install --prefer-binary scipy  # FAILED ~Nov 2022
 
     - name: Show platform info
