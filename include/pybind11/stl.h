@@ -187,9 +187,9 @@ public:
 
     template <typename T>
     static handle cast(T &&src, const return_value_policy_pack &rvpp, handle parent) {
-        return_value_policy_pack rvpp_local = rvpp;
+        return_value_policy_pack rvpp_local = rvpp.get(0);
         if (!std::is_lvalue_reference<T>::value) {
-            rvpp_local = rvpp.override_policy(return_value_policy_override<Key>::policy);
+            rvpp_local = rvpp_local.override_policy(return_value_policy_override<Key>::policy);
         }
         pybind11::set s;
         for (auto &&value : src) {
@@ -323,9 +323,9 @@ private:
 public:
     template <typename T>
     static handle cast(T &&src, const return_value_policy_pack &rvpp, handle parent) {
-        return_value_policy_pack rvpp_local = rvpp;
+        return_value_policy_pack rvpp_local = rvpp.get(0);
         if (!std::is_lvalue_reference<T>::value) {
-            rvpp_local = rvpp.override_policy(return_value_policy_override<Value>::policy);
+            rvpp_local = rvpp_local.override_policy(return_value_policy_override<Value>::policy);
         }
         list l(src.size());
         ssize_t index = 0;
@@ -406,11 +406,12 @@ public:
 
     template <typename T>
     static handle cast(T &&src, const return_value_policy_pack &rvpp, handle parent) {
+        return_value_policy_pack rvpp_local = rvpp.get(0);
         list l(src.size());
         ssize_t index = 0;
         for (auto &&value : src) {
             auto value_ = reinterpret_steal<object>(
-                value_conv::cast(detail::forward_like<T>(value), rvpp, parent));
+                value_conv::cast(detail::forward_like<T>(value), rvpp_local, parent));
             if (!value_) {
                 return handle();
             }
@@ -461,9 +462,9 @@ struct optional_caster {
         if (!src) {
             return none().release();
         }
-        return_value_policy_pack rvpp_local = rvpp;
+        return_value_policy_pack rvpp_local = rvpp.get(0);
         if (!std::is_lvalue_reference<T>::value) {
-            rvpp_local = rvpp.override_policy(return_value_policy_override<Value>::policy);
+            rvpp_local = rvpp_local.override_policy(return_value_policy_override<Value>::policy);
         }
         // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
         return value_conv::cast(*std::forward<T>(src), rvpp_local, parent);
