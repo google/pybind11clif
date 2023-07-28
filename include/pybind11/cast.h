@@ -1618,7 +1618,13 @@ inline namespace literals {
 /** \rst
     String literal version of `arg`
  \endrst */
-constexpr detail::arg_base operator"" _a(const char *name, size_t) {
+constexpr detail::arg_base
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 5
+operator"" _a // gcc 4.8.5 insists on having a space (hard error).
+#else
+operator""_a // clang 17 generates a deprecation warning if there is a space.
+#endif
+    (const char *name, size_t) {
     return detail::arg_base(name);
 }
 } // namespace literals
