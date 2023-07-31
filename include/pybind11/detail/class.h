@@ -200,17 +200,10 @@ extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, P
         return nullptr;
     }
 
-    values_and_holders vhs(reinterpret_cast<detail::instance *>(self));
-    if (vhs.size() == 0) { // TODO(rwgk): When/how does this happen?
-        return self;
-    }
-
     // Ensure that the base __init__ function(s) were called
     const auto &bases = all_type_info((PyTypeObject *) type);
-    if (bases.size() != vhs.size()) {
-        throw std::runtime_error("bases.size() != vhs.size(): " + std::to_string(bases.size())
-                                 + " != " + std::to_string(vhs.size()));
-    }
+    values_and_holders vhs(reinterpret_cast<detail::instance *>(self));
+    assert(bases.size() == vhs.size());
     std::size_t ix_base = 0;
     for (const auto &vh : vhs) {
         if (!vh.holder_constructed() && !is_redundant_value_and_holder(bases, ix_base)) {
