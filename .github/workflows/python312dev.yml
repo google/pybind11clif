@@ -26,7 +26,7 @@ jobs:
     - name: Show env
       run: env
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Setup Python 3.12-dev
       uses: actions/setup-python@v4
