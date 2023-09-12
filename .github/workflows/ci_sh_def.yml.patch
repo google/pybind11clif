@@ -1,5 +1,5 @@
---- ci.yml	2023-07-12 13:23:42.051641241 -0700
-+++ ci_sh_def.yml	2023-07-12 13:24:17.295586495 -0700
+--- ci.yml	2023-09-10 10:49:38.655616237 -0700
++++ ci_sh_def.yml	2023-09-10 10:50:17.855597833 -0700
 @@ -1,4 +1,16 @@
 -name: CI
 +# PLEASE KEEP THIS GROUP OF FILES IN SYNC AT ALL TIMES:
@@ -59,7 +59,7 @@
  
      - name: Build
        run: cmake --build build -j 2
-@@ -320,6 +336,7 @@
+@@ -323,6 +339,7 @@
          -DPYBIND11_WERROR=ON
          -DDOWNLOAD_CATCH=ON
          -DCMAKE_CXX_STANDARD=${{ matrix.std }}
@@ -67,7 +67,7 @@
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
      - name: Build
-@@ -349,7 +366,7 @@
+@@ -352,7 +369,7 @@
        run: apt-get update && DEBIAN_FRONTEND="noninteractive" apt-get install -y cmake git python3-dev python3-pytest python3-numpy
  
      - name: Configure
@@ -76,16 +76,16 @@
  
      - name: Build
        run: cmake --build build -j2 --verbose
-@@ -430,7 +447,7 @@
-         cmake3 -S . -B build -DDOWNLOAD_CATCH=ON \
-                             -DCMAKE_CXX_STANDARD=11 \
+@@ -440,7 +457,7 @@
+         cmake -S . -B build -DDOWNLOAD_CATCH=ON \
+                             -DCMAKE_CXX_STANDARD=17 \
                              -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)") \
 -                            -DCMAKE_CXX_FLAGS="-Wc,--pending_instantiations=0" \
 +                            -DCMAKE_CXX_FLAGS="-Wc,--pending_instantiations=0 -DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT" \
                              -DPYBIND11_TEST_FILTER="test_smart_ptr.cpp"
  
-     # Building before installing Pip should produce a warning but not an error
-@@ -489,6 +506,7 @@
+     - name: Build
+@@ -494,6 +511,7 @@
          -DPYBIND11_WERROR=ON
          -DDOWNLOAD_CATCH=ON
          -DCMAKE_CXX_STANDARD=${{ matrix.std }}
@@ -93,7 +93,7 @@
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
      - name: Build
-@@ -511,6 +529,7 @@
+@@ -516,6 +534,7 @@
          -DPYBIND11_WERROR=ON
          -DDOWNLOAD_CATCH=ON
          -DCMAKE_CXX_STANDARD=${{ matrix.std }}
@@ -101,7 +101,7 @@
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
          "-DPYBIND11_TEST_OVERRIDE=test_call_policies.cpp;test_gil_scoped.cpp;test_thread.cpp"
  
-@@ -562,6 +581,7 @@
+@@ -567,6 +586,7 @@
          -DDOWNLOAD_CATCH=ON     \
          -DDOWNLOAD_EIGEN=OFF    \
          -DCMAKE_CXX_STANDARD=11             \
@@ -109,7 +109,7 @@
          -DCMAKE_CXX_COMPILER=$(which icpc)  \
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
-@@ -594,6 +614,7 @@
+@@ -599,6 +619,7 @@
          -DDOWNLOAD_CATCH=ON     \
          -DDOWNLOAD_EIGEN=OFF    \
          -DCMAKE_CXX_STANDARD=17             \
@@ -117,7 +117,7 @@
          -DCMAKE_CXX_COMPILER=$(which icpc)  \
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
-@@ -661,6 +682,7 @@
+@@ -672,6 +693,7 @@
          -DDOWNLOAD_CATCH=ON
          -DDOWNLOAD_EIGEN=ON
          -DCMAKE_CXX_STANDARD=11
@@ -125,7 +125,7 @@
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
      - name: Build
-@@ -711,6 +733,7 @@
+@@ -722,6 +744,7 @@
          cmake ../pybind11-tests
          -DDOWNLOAD_CATCH=ON
          -DPYBIND11_WERROR=ON
@@ -133,7 +133,7 @@
          -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
        working-directory: /build-tests
  
-@@ -806,6 +829,7 @@
+@@ -817,6 +840,7 @@
          -DPYBIND11_WERROR=ON
          -DDOWNLOAD_CATCH=ON
          -DDOWNLOAD_EIGEN=ON
@@ -141,7 +141,7 @@
          ${{ matrix.args }}
      - name: Build C++11
        run: cmake --build build -j 2
-@@ -860,6 +884,7 @@
+@@ -871,6 +895,7 @@
          -DPYBIND11_WERROR=ON
          -DDOWNLOAD_CATCH=ON
          -DDOWNLOAD_EIGEN=ON
@@ -149,7 +149,7 @@
          ${{ matrix.args }}
      - name: Build C++11
        run: cmake --build build --config Debug -j 2
-@@ -900,6 +925,7 @@
+@@ -911,6 +936,7 @@
          -DDOWNLOAD_CATCH=ON
          -DDOWNLOAD_EIGEN=ON
          -DCMAKE_CXX_STANDARD=20
@@ -157,7 +157,7 @@
  
      - name: Build C++20
        run: cmake --build build -j 2
-@@ -920,6 +946,7 @@
+@@ -931,6 +957,7 @@
          -DDOWNLOAD_CATCH=ON
          -DDOWNLOAD_EIGEN=ON
          -DCMAKE_CXX_STANDARD=20
@@ -165,7 +165,7 @@
          "-DPYBIND11_TEST_OVERRIDE=test_call_policies.cpp;test_gil_scoped.cpp;test_thread.cpp"
  
      - name: Build C++20 - Exercise cmake -DPYBIND11_TEST_OVERRIDE
-@@ -962,7 +989,7 @@
+@@ -973,7 +1000,7 @@
      - name: Configure C++11
        # LTO leads to many undefined reference like
        # `pybind11::detail::function_call::function_call(pybind11::detail::function_call&&)
@@ -174,7 +174,7 @@
  
      - name: Build C++11
        run: cmake --build build -j 2
-@@ -980,7 +1007,7 @@
+@@ -991,7 +1018,7 @@
        run: git clean -fdx
  
      - name: Configure C++14
@@ -183,7 +183,7 @@
  
      - name: Build C++14
        run: cmake --build build2 -j 2
-@@ -998,7 +1025,7 @@
+@@ -1009,7 +1036,7 @@
        run: git clean -fdx
  
      - name: Configure C++17
@@ -192,7 +192,7 @@
  
      - name: Build C++17
        run: cmake --build build3 -j 2
-@@ -1065,6 +1092,7 @@
+@@ -1076,6 +1103,7 @@
            -DDOWNLOAD_EIGEN=ON
            -DCMAKE_CXX_COMPILER=clang++
            -DCMAKE_CXX_STANDARD=17
@@ -200,7 +200,7 @@
  
        - name: Build
          run: cmake --build . -j 2
-@@ -1130,6 +1158,7 @@
+@@ -1141,6 +1169,7 @@
            -DDOWNLOAD_EIGEN=ON
            -DCMAKE_CXX_COMPILER=clang++
            -DCMAKE_CXX_STANDARD=17
@@ -208,7 +208,7 @@
            -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)")
  
        - name: Build
-@@ -1153,6 +1182,7 @@
+@@ -1164,6 +1193,7 @@
            -DDOWNLOAD_EIGEN=ON
            -DCMAKE_CXX_COMPILER=clang++
            -DCMAKE_CXX_STANDARD=17
