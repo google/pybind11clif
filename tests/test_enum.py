@@ -266,6 +266,11 @@ def test_docstring_signatures():
             assert "arg0" not in (attr.__doc__ or "")
 
 
+def test_str_signature():
+    for enum_type in [m.ScopedEnum, m.UnscopedEnum]:
+        assert enum_type.__str__.__doc__.startswith("__str__")
+
+
 @pytest.mark.skipif(
     isinstance(m.obj_cast_UnscopedEnum_ptr, str), reason=m.obj_cast_UnscopedEnum_ptr
 )
