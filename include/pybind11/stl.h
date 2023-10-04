@@ -50,7 +50,7 @@ while pybind11 was very far on the strict side. Originally PyCLIF accepted any
 Python iterable as input for a C++ `vector`/`set`/`map` argument, as long as
 the elements were convertible. The obvious (in hindsight) problem was that
 any empty Python iterable could be passed to any of these C++ types, e.g. `{}`
-was accpeted for C++ `vector`/`set` arguments, or `[]` for C++ `map` arguments.
+was accepted for C++ `vector`/`set` arguments, or `[]` for C++ `map` arguments.
 
 The functions below strike a practical permissive-vs-strict compromise,
 informed by tens of thousands of use cases in the wild. A main objective is
@@ -202,7 +202,7 @@ public:
         return s.release();
     }
 
-    PYBIND11_TYPE_CASTER_RVPP(type, const_name("Set[") + key_conv::name + const_name("]"));
+    PYBIND11_TYPE_CASTER_RVPP(type, const_name("set[") + key_conv::name + const_name("]"));
 };
 
 template <typename Type, typename Key, typename Value>
@@ -273,7 +273,7 @@ public:
     }
 
     PYBIND11_TYPE_CASTER_RVPP(Type,
-                              const_name("Dict[") + key_conv::name + const_name(", ")
+                              const_name("dict[") + key_conv::name + const_name(", ")
                                   + value_conv::name + const_name("]"));
 };
 
@@ -340,7 +340,7 @@ public:
         return l.release();
     }
 
-    PYBIND11_TYPE_CASTER_RVPP(Type, const_name("List[") + value_conv::name + const_name("]"));
+    PYBIND11_TYPE_CASTER_RVPP(Type, const_name("list[") + value_conv::name + const_name("]"));
 };
 
 template <typename Type, typename Alloc>
@@ -422,7 +422,7 @@ public:
 
     PYBIND11_TYPE_CASTER_RVPP(ArrayType,
                               const_name<Resizable>(const_name(""), const_name("Annotated["))
-                                  + const_name("List[") + value_conv::name + const_name("]")
+                                  + const_name("list[") + value_conv::name + const_name("]")
                                   + const_name<Resizable>(const_name(""),
                                                           const_name(", FixedSize(")
                                                               + const_name<Size>()

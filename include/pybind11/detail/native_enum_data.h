@@ -98,6 +98,7 @@ inline void native_enum_add_to_parent(object parent, const detail::native_enum_d
     if (!enum_module) {
         raise_from(PyExc_SystemError,
                    "`import enum` FAILED at " __FILE__ ":" PYBIND11_TOSTRING(__LINE__));
+        throw error_already_set();
     }
     auto py_enum_type = enum_module.attr(data.use_int_enum ? "IntEnum" : "Enum");
     auto py_enum = py_enum_type(data.enum_name, data.members);
