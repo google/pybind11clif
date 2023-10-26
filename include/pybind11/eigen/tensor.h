@@ -5,10 +5,14 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+// IWYU pragma: always_keep // See pybind11/docs/type_caster_iwyu.rst
+
 #pragma once
 
 #include "../numpy.h"
+// IWYU pragma: begin_exports
 #include "common.h"
+// IWYU pragma: end_exports
 
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
 static_assert(__GNUC__ > 5, "Eigen Tensor support in pybind11 requires GCC > 5.0");

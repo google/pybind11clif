@@ -6,7 +6,9 @@
 
 #include "pybind11.h"
 #include "detail/common.h"
+// IWYU pragma: begin_exports
 #include "detail/smart_holder_type_casters.h"
+// IWYU pragma: end_exports
 
 #undef PYBIND11_SH_AVL // Undoing #define in pybind11.h
 

@@ -7,6 +7,8 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+// IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
+
 #pragma once
 
 #include <cstdio>

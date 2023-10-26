@@ -10,10 +10,12 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/class.h"
 #include "detail/init.h"
 #include "detail/native_enum_data.h"
 #include "detail/smart_holder_sfinae_hooks_only.h"
+// IWYU pragma: end_exports
 #include "attr.h"
 #include "gil.h"
 #include "gil_safe_call_once.h"

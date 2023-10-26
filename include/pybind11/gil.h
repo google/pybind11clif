@@ -9,12 +9,16 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/common.h"
+// IWYU pragma: end_exports
 
 #include <cassert>
 
 #if defined(WITH_THREAD) && !defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
+// IWYU pragma: begin_exports
 #    include "detail/internals.h"
+// IWYU pragma: end_exports
 #endif
 
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)

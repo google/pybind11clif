@@ -7,10 +7,14 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+// IWYU pragma: always_keep // See pybind11/docs/type_caster_iwyu.rst
+
 #pragma once
 
 #include "../numpy.h"
+// IWYU pragma: begin_exports
 #include "common.h"
+// IWYU pragma: end_exports
 
 /* HINT: To suppress warnings originating from the Eigen headers, use -isystem.
    See also:
