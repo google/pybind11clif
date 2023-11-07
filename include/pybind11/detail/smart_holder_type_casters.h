@@ -282,15 +282,24 @@ public:
             // if we can find an exact match (or, for a simple C++ type, an inherited match); if
             // so, we can safely reinterpret_cast to the relevant pointer.
             if (bases.size() > 1) {
+                std::vector<type_info *> matching_bases;
                 for (auto *base : bases) {
                     if (no_cpp_mi ? PyType_IsSubtype(base->type, typeinfo->type)
                                   : base->type == typeinfo->type) {
-                        this_.load_value_and_holder(
-                            reinterpret_cast<instance *>(src.ptr())->get_value_and_holder(base));
-                        loaded_v_h_cpptype = base->cpptype;
-                        reinterpret_cast_deemed_ok = true;
-                        return true;
+                        matching_bases.push_back(base);
                     }
+                }
+                if (!matching_bases.empty()) {
+                    if (matching_bases.size() > 1) {
+                        matching_bases.push_back(const_cast<type_info *>(typeinfo));
+                        all_type_info_check_for_divergence(matching_bases);
+                    }
+                    this_.load_value_and_holder(
+                        reinterpret_cast<instance *>(src.ptr())->get_value_and_holder(
+                            matching_bases[0]));
+                    loaded_v_h_cpptype = matching_bases[0]->cpptype;
+                    reinterpret_cast_deemed_ok = true;
+                    return true;
                 }
             }
 
