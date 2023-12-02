@@ -176,16 +176,19 @@ void keep_alive_impl(size_t Nurse, size_t Patient, function_call &call, handle r
 
 /// Internal data structure which holds metadata about a keyword argument
 struct argument_record {
-    const char *name;  ///< Argument name
-    const char *descr; ///< Human-readable version of the argument value
-    handle value;      ///< Associated Python object
+    const char *name;      ///< Argument name
+    const char *descr;     ///< Human-readable version of the argument value
+    handle value;          ///< Associated Python object
+    bool value_is_nullptr; ///< True if explicit nullptr
     from_python_policies policies;
 
     argument_record(const char *name,
                     const char *descr,
                     handle value,
+                    bool value_is_nullptr,
                     const from_python_policies &policies)
-        : name(name), descr(descr), value(value), policies(policies) {}
+        : name(name), descr(descr), value(value), value_is_nullptr(value_is_nullptr),
+          policies(policies) {}
 };
 
 /// Internal data structure which holds metadata about a bound function (signature, overloads,
@@ -474,8 +477,11 @@ inline void check_kw_only_arg(const arg &a, function_record *r) {
 
 inline void append_self_arg_if_needed(function_record *r) {
     if (r->is_method && r->args.empty()) {
-        r->args.emplace_back(
-            "self", nullptr, handle(), from_python_policies(/*convert=*/true, /*none=*/false));
+        r->args.emplace_back("self",
+                             nullptr,
+                             handle(),
+                             /*value_is_nullptr=*/false,
+                             from_python_policies(/*convert=*/true, /*none=*/false));
     }
 }
 
@@ -488,6 +494,7 @@ struct process_attribute<arg> : process_attribute_default<arg> {
             a.name,
             nullptr,
             handle(),
+            /*value_is_nullptr=*/false,
             from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
@@ -504,10 +511,11 @@ struct process_attribute<arg_v> : process_attribute_default<arg_v> {
             r->args.emplace_back("self",
                                  /*descr=*/nullptr,
                                  /*parent=*/handle(),
+                                 /*value_is_nullptr=*/false,
                                  from_python_policies(/*convert=*/true, /*none=*/false));
         }
 
-        if (!a.value) {
+        if (!a.value && !a.value_is_nullptr) {
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
             std::string descr("'");
             if (a.name) {
@@ -537,6 +545,7 @@ struct process_attribute<arg_v> : process_attribute_default<arg_v> {
             a.name,
             a.descr,
             a.value.inc_ref(),
+            a.value_is_nullptr,
             from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
