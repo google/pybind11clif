@@ -176,10 +176,14 @@ void keep_alive_impl(size_t Nurse, size_t Patient, function_call &call, handle r
 
 /// Internal data structure which holds metadata about a keyword argument
 struct argument_record {
-    const char *name;      ///< Argument name
-    const char *descr;     ///< Human-readable version of the argument value
-    handle value;          ///< Associated Python object
-    bool value_is_nullptr; ///< True if explicit nullptr
+    const char *name;  ///< Argument name
+    const char *descr; ///< Human-readable version of the argument value
+    handle value;      ///< Associated Python object
+    // The explicit value_is_nullptr variable is for safety, to unambiguously
+    // distinguish these two cases in all situations:
+    // * value is nullptr on purpose.
+    // * value is nullptr because of an error condition.
+    bool value_is_nullptr;
     from_python_policies policies;
 
     argument_record(const char *name,

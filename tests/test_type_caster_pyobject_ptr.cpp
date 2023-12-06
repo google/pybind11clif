@@ -128,6 +128,8 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
     }
 #endif
 
+    // This test exercises functionality (`py::cast<PyObject *>(handle_nullptr)`)
+    // that is needed indirectly below in py_arg_handle_nullptr.
     m.def("pyobject_ptr_from_handle_nullptr", []() {
         py::handle handle_nullptr;
         if (handle_nullptr.ptr() != nullptr) {
