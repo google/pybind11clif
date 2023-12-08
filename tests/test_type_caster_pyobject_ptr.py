@@ -102,3 +102,13 @@ def test_return_list_pyobject_ptr_reference():
 def test_type_caster_name_via_incompatible_function_arguments_type_error():
     with pytest.raises(TypeError, match=r"1\. \(arg0: object, arg1: int\) -> None"):
         m.pass_pyobject_ptr_and_int(ValueHolder(101), ValueHolder(202))
+
+
+def test_pyobject_ptr_from_handle_nullptr():
+    assert m.pyobject_ptr_from_handle_nullptr() == "SUCCESS"
+
+
+def test_py_arg_handle_nullptr():
+    assert m.py_arg_handle_nullptr(None) == "NoneType"
+    assert m.py_arg_handle_nullptr([]) == "list"
+    assert m.py_arg_handle_nullptr() == "ptr == nullptr"
