@@ -181,8 +181,8 @@ struct argument_record {
     handle value;      ///< Associated Python object
     // The explicit value_is_nullptr variable is for safety, to unambiguously
     // distinguish these two cases in all situations:
-    // * value is nullptr on purpose.
-    // * value is nullptr because of an error condition.
+    // * value is nullptr on purpose (value_is_nullptr true).
+    // * value is nullptr because of an error condition (value_is_nullptr false).
     bool value_is_nullptr;
     from_python_policies policies;
 
