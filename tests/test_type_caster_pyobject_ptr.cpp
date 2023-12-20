@@ -127,4 +127,28 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
         (void) py::cast(*ptr);
     }
 #endif
+
+    // This test exercises functionality (`py::cast<PyObject *>(handle_nullptr)`)
+    // that is needed indirectly below in py_arg_handle_nullptr.
+    m.def("pyobject_ptr_from_handle_nullptr", []() {
+        py::handle handle_nullptr;
+        if (handle_nullptr.ptr() != nullptr) {
+            return "UNEXPECTED: handle_nullptr.ptr() != nullptr";
+        }
+        auto *pyobject_ptr_from_handle = py::cast<PyObject *>(handle_nullptr);
+        if (pyobject_ptr_from_handle != nullptr) {
+            return "UNEXPECTED: pyobject_ptr_from_handle != nullptr";
+        }
+        return "SUCCESS";
+    });
+
+    m.def(
+        "py_arg_handle_nullptr",
+        [](PyObject *ptr) {
+            if (ptr == nullptr) {
+                return "ptr == nullptr";
+            }
+            return py::detail::obj_class_name(ptr);
+        },
+        py::arg("ptr") = py::nullptr_default_arg());
 }

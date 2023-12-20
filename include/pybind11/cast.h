@@ -1539,6 +1539,8 @@ struct arg : detail::arg_base {
     from_python_policies m_policies;
 };
 
+struct nullptr_default_arg {};
+
 /// \ingroup annotations
 /// Annotation for arguments with values
 struct arg_v : arg {
@@ -1548,6 +1550,16 @@ struct arg_v : arg {
 private:
 #endif
     friend struct arg_base;
+
+    arg_v(arg &&base, nullptr_default_arg, const char *descr = nullptr)
+        : arg(base), value(), value_is_nullptr(true), descr(descr)
+#if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
+          ,
+          type("pybind11::nullptr_default_arg")
+#endif
+    {
+    }
+
     template <typename T>
     arg_v(arg &&base, T &&x, const char *descr = nullptr)
         : arg(base), value(reinterpret_steal<object>(detail::make_caster<T>::cast(
@@ -1591,6 +1603,7 @@ public:
 
     /// The default value
     object value;
+    bool value_is_nullptr = false;
     /// The (optional) description of the default value
     const char *descr;
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES)

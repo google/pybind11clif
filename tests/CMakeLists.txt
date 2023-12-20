@@ -7,13 +7,13 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-# The `cmake_minimum_required(VERSION 3.5...3.26)` syntax does not work with
+# The `cmake_minimum_required(VERSION 3.5...3.27)` syntax does not work with
 # some versions of VS that have a patched CMake 3.11. This forces us to emulate
 # the behavior using the following workaround:
-if(${CMAKE_VERSION} VERSION_LESS 3.26)
+if(${CMAKE_VERSION} VERSION_LESS 3.27)
   cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 else()
-  cmake_policy(VERSION 3.26)
+  cmake_policy(VERSION 3.27)
 endif()
 
 # Filter out items; print an optional message if any items filtered. This ignores extensions.
@@ -135,6 +135,7 @@ set(PYBIND11_TEST_FILES
     test_class_sh_trampoline_shared_from_this
     test_class_sh_trampoline_shared_ptr_cpp_arg
     test_class_sh_trampoline_unique_ptr
+    test_class_sh_unique_ptr_custom_deleter
     test_class_sh_unique_ptr_member
     test_class_sh_virtual_py_cpp_mix
     test_class_sh_void_ptr_capsule

@@ -466,6 +466,27 @@ struct shared_ptr_trampoline_self_life_support {
     }
 };
 
+template <typename T,
+          typename D,
+          typename std::enable_if<std::is_default_constructible<D>::value, int>::type = 0>
+inline std::unique_ptr<T, D> unique_with_deleter(T *raw_ptr, std::unique_ptr<D> &&deleter) {
+    if (deleter == nullptr) {
+        return std::unique_ptr<T, D>(raw_ptr);
+    }
+    return std::unique_ptr<T, D>(raw_ptr, std::move(*deleter));
+}
+
+template <typename T,
+          typename D,
+          typename std::enable_if<!std::is_default_constructible<D>::value, int>::type = 0>
+inline std::unique_ptr<T, D> unique_with_deleter(T *raw_ptr, std::unique_ptr<D> &&deleter) {
+    if (deleter == nullptr) {
+        pybind11_fail("smart_holder_type_casters: deleter is not default constructible and no"
+                      " instance available to return.");
+    }
+    return std::unique_ptr<T, D>(raw_ptr, std::move(*deleter));
+}
+
 template <typename T>
 struct smart_holder_type_caster_load {
     using holder_type = pybindit::memory::smart_holder;
@@ -486,7 +507,7 @@ struct smart_holder_type_caster_load {
         }
         if (void_ptr == nullptr) {
             if (have_holder()) {
-                throw_if_uninitialized_or_disowned_holder();
+                throw_if_uninitialized_or_disowned_holder(typeid(T));
                 void_ptr = holder().template as_raw_ptr_unowned<void>();
             } else if (load_impl.loaded_v_h.vh != nullptr) {
                 void_ptr = load_impl.loaded_v_h.value_ptr();
@@ -529,7 +550,7 @@ struct smart_holder_type_caster_load {
         if (!have_holder()) {
             return nullptr;
         }
-        throw_if_uninitialized_or_disowned_holder();
+        throw_if_uninitialized_or_disowned_holder(typeid(T));
         holder_type &hld = holder();
         hld.ensure_is_not_disowned("loaded_as_shared_ptr");
         if (hld.vptr_is_using_noop_deleter) {
@@ -591,9 +612,9 @@ struct smart_holder_type_caster_load {
                              " std::unique_ptr.");
         }
         if (!have_holder()) {
-            return nullptr;
+            return unique_with_deleter<T, D>(nullptr, std::unique_ptr<D>());
         }
-        throw_if_uninitialized_or_disowned_holder();
+        throw_if_uninitialized_or_disowned_holder(typeid(T));
         throw_if_instance_is_currently_owned_by_shared_ptr();
         holder().ensure_is_not_disowned(context);
         holder().template ensure_compatible_rtti_uqp_del<T, D>(context);
@@ -618,13 +639,30 @@ struct smart_holder_type_caster_load {
                               "instance cannot safely be transferred to C++.");
         }
 
+        // Temporary variable to store the extracted deleter in.
+        std::unique_ptr<D> extracted_deleter;
+
+        auto *gd = std::get_deleter<pybindit::memory::guarded_delete>(holder().vptr);
+        if (gd && gd->use_del_fun) { // Note the ensure_compatible_rtti_uqp_del<T, D>() call above.
+            // In smart_holder_poc, a custom  deleter is always stored in a guarded delete.
+            // The guarded delete's std::function<void(void*)> actually points at the
+            // custom_deleter type, so we can verify it is of the custom deleter type and
+            // finally extract its deleter.
+            using custom_deleter_D = pybindit::memory::custom_deleter<T, D>;
+            const auto &custom_deleter_ptr = gd->del_fun.template target<custom_deleter_D>();
+            assert(custom_deleter_ptr != nullptr);
+            // Now that we have confirmed the type of the deleter matches the desired return
+            // value we can extract the function.
+            extracted_deleter = std::unique_ptr<D>(new D(std::move(custom_deleter_ptr->deleter)));
+        }
+
         // Critical transfer-of-ownership section. This must stay together.
         if (self_life_support != nullptr) {
             holder().disown();
         } else {
             holder().release_ownership();
         }
-        auto result = std::unique_ptr<T, D>(raw_type_ptr);
+        auto result = unique_with_deleter<T, D>(raw_type_ptr, std::move(extracted_deleter));
         if (self_life_support != nullptr) {
             self_life_support->activate_life_support(load_impl.loaded_v_h);
         } else {
@@ -658,15 +696,20 @@ private:
     holder_type &holder() const { return load_impl.loaded_v_h.holder<holder_type>(); }
 
     // have_holder() must be true or this function will fail.
-    void throw_if_uninitialized_or_disowned_holder() const {
+    void throw_if_uninitialized_or_disowned_holder(const char *typeid_name) const {
+        static const std::string missing_value_msg = "Missing value for wrapped C++ type `";
         if (!holder().is_populated) {
-            pybind11_fail("Missing value for wrapped C++ type:"
-                          " Python instance is uninitialized.");
+            throw value_error(missing_value_msg + clean_type_id(typeid_name)
+                              + "`: Python instance is uninitialized.");
         }
         if (!holder().has_pointee()) {
-            throw value_error("Missing value for wrapped C++ type:"
-                              " Python instance was disowned.");
+            throw value_error(missing_value_msg + clean_type_id(typeid_name)
+                              + "`: Python instance was disowned.");
         }
+    }
+
+    void throw_if_uninitialized_or_disowned_holder(const std::type_info &type_info) const {
+        throw_if_uninitialized_or_disowned_holder(type_info.name());
     }
 
     // have_holder() must be true or this function will fail.
@@ -1058,7 +1101,8 @@ struct smart_holder_type_caster<std::unique_ptr<T const, D>>
     static handle
     cast(std::unique_ptr<T const, D> &&src, return_value_policy policy, handle parent) {
         return smart_holder_type_caster<std::unique_ptr<T, D>>::cast(
-            std::unique_ptr<T, D>(const_cast<T *>(src.release())), // Const2Mutbl
+            std::unique_ptr<T, D>(const_cast<T *>(src.release()),
+                                  std::move(src.get_deleter())), // Const2Mutbl
             policy,
             parent);
     }

@@ -912,7 +912,7 @@ protected:
                             break;
                         }
 
-                        if (value) {
+                        if (value || arg_rec.value_is_nullptr) {
                             // If we're at the py::args index then first insert a stub for it to be
                             // replaced later
                             if (func.has_args && call.args.size() == func.nargs_pos) {
@@ -3045,7 +3045,11 @@ get_type_override(const void *this_ptr, const type_info *this_type, const char *
         if ((std::string) str(f_code->co_name) == name && f_code->co_argcount > 0) {
             PyObject *locals = PyEval_GetLocals();
             if (locals != nullptr) {
+#        if PY_VERSION_HEX >= 0x030b0000
+                PyObject *co_varnames = PyCode_GetVarnames(f_code);
+#        else
                 PyObject *co_varnames = PyObject_GetAttrString((PyObject *) f_code, "co_varnames");
+#        endif
                 PyObject *self_arg = PyTuple_GET_ITEM(co_varnames, 0);
                 Py_DECREF(co_varnames);
                 PyObject *self_caller = dict_getitem(locals, self_arg);
