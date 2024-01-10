@@ -25,7 +25,7 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
         PyObject *ptr = PyLong_FromLongLong(6758L);
         return py::cast(ptr, py::return_value_policy::take_ownership);
     });
-    m.def("cast_to_pyobject_ptr", [](py::handle obj) {
+    m.def("cast_handle_to_pyobject_ptr", [](py::handle obj) {
         auto rc1 = obj.ref_count();
         auto *ptr = py::cast<PyObject *>(obj);
         auto rc2 = obj.ref_count();
@@ -33,6 +33,27 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
             return -1;
         }
         return 100 - py::reinterpret_steal<py::object>(ptr).attr("value").cast<int>();
+    });
+    m.def("cast_object_to_pyobject_ptr", [](py::object obj) {
+        py::handle hdl = obj;
+        auto rc1 = hdl.ref_count();
+        auto *ptr = py::cast<PyObject *>(std::move(obj));
+        auto rc2 = hdl.ref_count();
+        if (rc2 != rc1) {
+            return -1;
+        }
+        return 300 - py::reinterpret_steal<py::object>(ptr).attr("value").cast<int>();
+    });
+    m.def("cast_list_to_pyobject_ptr", [](py::list lst) {
+        // This is to cover types implicitly convertible to object.
+        py::handle hdl = lst;
+        auto rc1 = hdl.ref_count();
+        auto *ptr = py::cast<PyObject *>(std::move(lst));
+        auto rc2 = hdl.ref_count();
+        if (rc2 != rc1) {
+            return -1;
+        }
+        return 400 - static_cast<int>(py::len(py::reinterpret_steal<py::list>(ptr)));
     });
 
     m.def(
@@ -57,14 +78,14 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
 
     m.def("cast_to_pyobject_ptr_nullptr", [](bool set_error) {
         if (set_error) {
-            PyErr_SetString(PyExc_RuntimeError, "Reflective of healthy error handling.");
+            py::set_error(PyExc_RuntimeError, "Reflective of healthy error handling.");
         }
         PyObject *ptr = nullptr;
         py::cast(ptr);
     });
 
     m.def("cast_to_pyobject_ptr_non_nullptr_with_error_set", []() {
-        PyErr_SetString(PyExc_RuntimeError, "Reflective of unhealthy error handling.");
+        py::set_error(PyExc_RuntimeError, "Reflective of unhealthy error handling.");
         py::cast(Py_None);
     });
 
@@ -98,10 +119,36 @@ TEST_SUBMODULE(type_caster_pyobject_ptr, m) {
         return i;
     });
 
+    m.def("pass_pyobject_ptr_and_int", [](PyObject *, int) {});
+
 #ifdef PYBIND11_NO_COMPILE_SECTION // Change to ifndef for manual testing.
     {
         PyObject *ptr = nullptr;
         (void) py::cast(*ptr);
     }
 #endif
+
+    // This test exercises functionality (`py::cast<PyObject *>(handle_nullptr)`)
+    // that is needed indirectly below in py_arg_handle_nullptr.
+    m.def("pyobject_ptr_from_handle_nullptr", []() {
+        py::handle handle_nullptr;
+        if (handle_nullptr.ptr() != nullptr) {
+            return "UNEXPECTED: handle_nullptr.ptr() != nullptr";
+        }
+        auto *pyobject_ptr_from_handle = py::cast<PyObject *>(handle_nullptr);
+        if (pyobject_ptr_from_handle != nullptr) {
+            return "UNEXPECTED: pyobject_ptr_from_handle != nullptr";
+        }
+        return "SUCCESS";
+    });
+
+    m.def(
+        "py_arg_handle_nullptr",
+        [](PyObject *ptr) {
+            if (ptr == nullptr) {
+                return "ptr == nullptr";
+            }
+            return py::detail::obj_class_name(ptr);
+        },
+        py::arg("ptr") = py::nullptr_default_arg());
 }

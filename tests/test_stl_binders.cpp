@@ -15,6 +15,7 @@
 #include <deque>
 #include <map>
 #include <unordered_map>
+#include <vector>
 
 class El {
 public:
@@ -69,6 +70,109 @@ NestMap *times_hundred(int n) {
     }
     return m;
 }
+
+/*
+ * Recursive data structures as test for issue #4623
+ */
+struct RecursiveVector : std::vector<RecursiveVector> {
+    using Parent = std::vector<RecursiveVector>;
+    using Parent::Parent;
+};
+
+struct RecursiveMap : std::map<int, RecursiveMap> {
+    using Parent = std::map<int, RecursiveMap>;
+    using Parent::Parent;
+};
+
+class UserVectorLike : private std::vector<int> {
+public:
+    // This is only a subset of the member functions, as needed at the time.
+    using Base = std::vector<int>;
+    using typename Base::const_iterator;
+    using typename Base::difference_type;
+    using typename Base::iterator;
+    using typename Base::size_type;
+    using typename Base::value_type;
+
+    using Base::at;
+    using Base::back;
+    using Base::Base;
+    using Base::begin;
+    using Base::cbegin;
+    using Base::cend;
+    using Base::clear;
+    using Base::empty;
+    using Base::end;
+    using Base::erase;
+    using Base::front;
+    using Base::insert;
+    using Base::pop_back;
+    using Base::push_back;
+    using Base::reserve;
+    using Base::shrink_to_fit;
+    using Base::swap;
+    using Base::operator[];
+    using Base::capacity;
+    using Base::size;
+};
+
+bool operator==(UserVectorLike const &, UserVectorLike const &) { return true; }
+bool operator!=(UserVectorLike const &, UserVectorLike const &) { return false; }
+
+class UserMapLike : private std::map<int, int> {
+public:
+    // This is only a subset of the member functions, as needed at the time.
+    using Base = std::map<int, int>;
+    using typename Base::const_iterator;
+    using typename Base::iterator;
+    using typename Base::key_type;
+    using typename Base::mapped_type;
+    using typename Base::size_type;
+    using typename Base::value_type;
+
+    using Base::at;
+    using Base::Base;
+    using Base::begin;
+    using Base::cbegin;
+    using Base::cend;
+    using Base::clear;
+    using Base::emplace;
+    using Base::emplace_hint;
+    using Base::empty;
+    using Base::end;
+    using Base::erase;
+    using Base::find;
+    using Base::insert;
+    using Base::max_size;
+    using Base::swap;
+    using Base::operator[];
+    using Base::size;
+};
+
+/*
+ * Pybind11 does not catch more complicated recursion schemes, such as mutual
+ * recursion.
+ * In that case custom recursive_container_traits specializations need to be added,
+ * thus manually telling pybind11 about the recursion.
+ */
+struct MutuallyRecursiveContainerPairMV;
+struct MutuallyRecursiveContainerPairVM;
+
+struct MutuallyRecursiveContainerPairMV : std::map<int, MutuallyRecursiveContainerPairVM> {};
+struct MutuallyRecursiveContainerPairVM : std::vector<MutuallyRecursiveContainerPairMV> {};
+
+namespace pybind11 {
+namespace detail {
+template <typename SFINAE>
+struct recursive_container_traits<MutuallyRecursiveContainerPairMV, SFINAE> {
+    using type_to_check_recursively = recursive_bottom;
+};
+template <typename SFINAE>
+struct recursive_container_traits<MutuallyRecursiveContainerPairVM, SFINAE> {
+    using type_to_check_recursively = recursive_bottom;
+};
+} // namespace detail
+} // namespace pybind11
 
 TEST_SUBMODULE(stl_binders, m) {
     // test_vector_int
@@ -128,6 +232,16 @@ TEST_SUBMODULE(stl_binders, m) {
         py::bind_vector<std::vector<VUndeclStruct>>(
             m, "VectorUndeclStruct", py::buffer_protocol());
     });
+
+    // Bind recursive container types
+    py::bind_vector<RecursiveVector>(m, "RecursiveVector");
+    py::bind_map<RecursiveMap>(m, "RecursiveMap");
+    py::bind_map<MutuallyRecursiveContainerPairMV>(m, "MutuallyRecursiveContainerPairMV");
+    py::bind_vector<MutuallyRecursiveContainerPairVM>(m, "MutuallyRecursiveContainerPairVM");
+
+    // Bind with private inheritance + `using` directives.
+    py::bind_vector<UserVectorLike>(m, "UserVectorLike");
+    py::bind_map<UserMapLike>(m, "UserMapLike");
 
     // The rest depends on numpy:
     try {

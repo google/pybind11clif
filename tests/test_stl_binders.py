@@ -209,7 +209,7 @@ def test_map_string_double_const():
 def test_noncopyable_containers():
     # std::vector
     vnc = m.get_vnc(5)
-    for i in range(0, 5):
+    for i in range(5):
         assert vnc[i].value == i + 1
 
     for i, j in enumerate(vnc, start=1):
@@ -217,7 +217,7 @@ def test_noncopyable_containers():
 
     # std::deque
     dnc = m.get_dnc(5)
-    for i in range(0, 5):
+    for i in range(5):
         assert dnc[i].value == i + 1
 
     i = 1
@@ -252,7 +252,7 @@ def test_noncopyable_containers():
     # nested std::map<std::vector>
     nvnc = m.get_nvnc(5)
     for i in range(1, 6):
-        for j in range(0, 5):
+        for j in range(5):
             assert nvnc[i][j].value == j + 1
 
     # Note: maps do not have .values()
@@ -335,3 +335,35 @@ def test_map_view_types():
     assert type(unordered_map_string_double.items()) is items_type
     assert type(map_string_double_const.items()) is items_type
     assert type(unordered_map_string_double_const.items()) is items_type
+
+
+def test_recursive_vector():
+    recursive_vector = m.RecursiveVector()
+    recursive_vector.append(m.RecursiveVector())
+    recursive_vector[0].append(m.RecursiveVector())
+    recursive_vector[0].append(m.RecursiveVector())
+    # Can't use len() since test_stl_binders.cpp does not include stl.h,
+    # so the necessary conversion is missing
+    assert recursive_vector[0].count(m.RecursiveVector()) == 2
+
+
+def test_recursive_map():
+    recursive_map = m.RecursiveMap()
+    recursive_map[100] = m.RecursiveMap()
+    recursive_map[100][101] = m.RecursiveMap()
+    recursive_map[100][102] = m.RecursiveMap()
+    assert list(recursive_map[100].keys()) == [101, 102]
+
+
+def test_user_vector_like():
+    vec = m.UserVectorLike()
+    vec.append(2)
+    assert vec[0] == 2
+    assert len(vec) == 1
+
+
+def test_user_like_map():
+    map = m.UserMapLike()
+    map[33] = 44
+    assert map[33] == 44
+    assert len(map) == 1

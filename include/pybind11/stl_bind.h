@@ -61,9 +61,11 @@ struct is_comparable<
 /* For a vector/map data structure, recursively check the value type
    (which is std::pair for maps) */
 template <typename T>
-struct is_comparable<T, enable_if_t<container_traits<T>::is_vector>> {
-    static constexpr const bool value = is_comparable<typename T::value_type>::value;
-};
+struct is_comparable<T, enable_if_t<container_traits<T>::is_vector>>
+    : is_comparable<typename recursive_container_traits<T>::type_to_check_recursively> {};
+
+template <>
+struct is_comparable<recursive_bottom> : std::true_type {};
 
 /* For pairs, recursively check the two data types */
 template <typename T>
@@ -523,7 +525,7 @@ class_<Vector, holder_type> bind_vector(handle scope, std::string const &name, A
         [](const Vector &v) -> bool { return !v.empty(); },
         "Check whether the list is nonempty");
 
-    cl.def("__len__", &Vector::size);
+    cl.def("__len__", [](const Vector &vec) { return vec.size(); });
 
 #if 0
     // C++ style functions deprecated, leaving it here as an example
@@ -841,7 +843,8 @@ class_<Map, holder_type> bind_map(handle scope, const std::string &name, Args &&
         m.erase(it);
     });
 
-    cl.def("__len__", &Map::size);
+    // Always use a lambda in case of `using` declaration
+    cl.def("__len__", [](const Map &m) { return m.size(); });
 
     return cl;
 }

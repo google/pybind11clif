@@ -66,6 +66,35 @@ def test_load_with_rtrn_f(pass_f, rtrn_f, expected):
 
 
 @pytest.mark.parametrize(
+    ("pass_f", "rtrn_f", "regex_expected"),
+    [
+        (
+            m.pass_udmp_del,
+            m.rtrn_udmp_del,
+            "pass_udmp_del:rtrn_udmp_del,udmp_deleter(_MvCtorTo)*_MvCtorTo",
+        ),
+        (
+            m.pass_udcp_del,
+            m.rtrn_udcp_del,
+            "pass_udcp_del:rtrn_udcp_del,udcp_deleter(_MvCtorTo)*_MvCtorTo",
+        ),
+        (
+            m.pass_udmp_del_nd,
+            m.rtrn_udmp_del_nd,
+            "pass_udmp_del_nd:rtrn_udmp_del_nd,udmp_deleter_nd(_MvCtorTo)*_MvCtorTo",
+        ),
+        (
+            m.pass_udcp_del_nd,
+            m.rtrn_udcp_del_nd,
+            "pass_udcp_del_nd:rtrn_udcp_del_nd,udcp_deleter_nd(_MvCtorTo)*_MvCtorTo",
+        ),
+    ],
+)
+def test_deleter_roundtrip(pass_f, rtrn_f, regex_expected):
+    assert re.match(regex_expected, pass_f(rtrn_f()))
+
+
+@pytest.mark.parametrize(
     ("pass_f", "rtrn_f", "expected"),
     [
         (m.pass_uqmp, m.rtrn_uqmp, "pass_uqmp:rtrn_uqmp"),
@@ -80,7 +109,9 @@ def test_pass_unique_ptr_disowns(pass_f, rtrn_f, expected):
     with pytest.raises(ValueError) as exc_info:
         pass_f(obj)
     assert str(exc_info.value) == (
-        "Missing value for wrapped C++ type: Python instance was disowned."
+        "Missing value for wrapped C++ type"
+        + " `pybind11_tests::class_sh_basic::atyp`:"
+        + " Python instance was disowned."
     )
 
 
@@ -181,3 +212,7 @@ def test_function_signatures(doc):
         doc(m.args_unique_ptr_const)
         == "args_unique_ptr_const(arg0: m.class_sh_basic.atyp) -> m.class_sh_basic.atyp"
     )
+
+
+def test_unique_ptr_return_value_policy_automatic_reference():
+    assert m.get_mtxt(m.rtrn_uq_automatic_reference()) == "rtrn_uq_automatic_reference"

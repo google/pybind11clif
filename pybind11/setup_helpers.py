@@ -66,8 +66,10 @@ try:
     from setuptools import Extension as _Extension
     from setuptools.command.build_ext import build_ext as _build_ext
 except ImportError:
-    from distutils.command.build_ext import build_ext as _build_ext
-    from distutils.extension import Extension as _Extension
+    from distutils.command.build_ext import (  # type: ignore[assignment]
+        build_ext as _build_ext,
+    )
+    from distutils.extension import Extension as _Extension  # type: ignore[assignment]
 
 import distutils.ccompiler
 import distutils.errors
@@ -84,7 +86,7 @@ STD_TMPL = "/std:c++{}" if WIN else "-std=c++{}"
 # directory into your path if it sits beside your setup.py.
 
 
-class Pybind11Extension(_Extension):  # type: ignore[misc]
+class Pybind11Extension(_Extension):
     """
     Build a C++11+ Extension module with pybind11. This automatically adds the
     recommended flags when you init the extension and assumes C++ sources - you
@@ -144,7 +146,6 @@ class Pybind11Extension(_Extension):  # type: ignore[misc]
         self.cxx_std = cxx_std
 
         cflags = []
-        ldflags = []
         if WIN:
             cflags += ["/EHsc", "/bigobj"]
         else:
@@ -154,11 +155,7 @@ class Pybind11Extension(_Extension):  # type: ignore[misc]
             c_cpp_flags = shlex.split(env_cflags) + shlex.split(env_cppflags)
             if not any(opt.startswith("-g") for opt in c_cpp_flags):
                 cflags += ["-g0"]
-            if MACOS:
-                cflags += ["-stdlib=libc++"]
-                ldflags += ["-stdlib=libc++"]
         self._add_cflags(cflags)
-        self._add_ldflags(ldflags)
 
     @property
     def cxx_std(self) -> int:
@@ -271,7 +268,7 @@ def auto_cpp_level(compiler: Any) -> Union[str, int]:
     raise RuntimeError(msg)
 
 
-class build_ext(_build_ext):  # type: ignore[misc] # noqa: N801
+class build_ext(_build_ext):  # noqa: N801
     """
     Customized build_ext that allows an auto-search for the highest supported
     C++ level for Pybind11Extension. This is only needed for the auto-search

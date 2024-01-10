@@ -35,6 +35,7 @@ main_headers = {
     "include/pybind11/eval.h",
     "include/pybind11/functional.h",
     "include/pybind11/gil.h",
+    "include/pybind11/gil_safe_call_once.h",
     "include/pybind11/iostream.h",
     "include/pybind11/native_enum.h",
     "include/pybind11/numpy.h",
@@ -47,6 +48,7 @@ main_headers = {
     "include/pybind11/stl_bind.h",
     "include/pybind11/trampoline_self_life_support.h",
     "include/pybind11/type_caster_pyobject_ptr.h",
+    "include/pybind11/typing.h",
 }
 
 detail_headers = {
@@ -69,6 +71,7 @@ detail_headers = {
 }
 
 eigen_headers = {
+    "include/pybind11/eigen/common.h",
     "include/pybind11/eigen/matrix.h",
     "include/pybind11/eigen/tensor.h",
 }
@@ -124,6 +127,7 @@ sdist_files = {
     "README.rst",
     "README_smart_holder.rst",
     "PKG-INFO",
+    "SECURITY.md",
 }
 
 local_sdist_files = {

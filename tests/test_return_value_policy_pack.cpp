@@ -311,7 +311,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     m.def(
         "return_set_sb",
         []() { return return_set_pair_string(); },
-        py::return_value_policy_pack({rvpc, rvpb}));
+        py::return_value_policy_pack({{rvpc, rvpb}}));
     m.def(
         "return_set_bs",
         []() {
@@ -319,12 +319,12 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             static auto *s = new SetPairString(return_set_pair_string());
             return s;
         },
-        py::return_value_policy_pack({rvpb, rvpc}));
+        py::return_value_policy_pack({{rvpb, rvpc}}));
 
     m.def(
         "return_vector_sb",
         []() { return return_vector_pair_string(); },
-        py::return_value_policy_pack({rvpc, rvpb}));
+        py::return_value_policy_pack({{rvpc, rvpb}}));
     m.def(
         "return_vector_bs",
         []() {
@@ -332,12 +332,12 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             static auto *v = new VectorPairString(return_vector_pair_string());
             return v;
         },
-        py::return_value_policy_pack({rvpb, rvpc}));
+        py::return_value_policy_pack({{rvpb, rvpc}}));
 
     m.def(
         "return_array_sb",
         []() { return return_array_pair_string(); },
-        py::return_value_policy_pack({rvpc, rvpb}));
+        py::return_value_policy_pack({{rvpc, rvpb}}));
     m.def(
         "return_array_bs",
         []() {
@@ -345,7 +345,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             static auto *a = new ArrayPairString(return_array_pair_string());
             return a;
         },
-        py::return_value_policy_pack({rvpb, rvpc}));
+        py::return_value_policy_pack({{rvpb, rvpc}}));
 
     m.attr("PYBIND11_HAS_OPTIONAL") =
 #if !defined(PYBIND11_HAS_OPTIONAL)
@@ -355,7 +355,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     m.def(
         "return_optional_sb",
         []() { return return_optional_pair_string(); },
-        py::return_value_policy_pack({rvpc, rvpb}));
+        py::return_value_policy_pack({{rvpc, rvpb}}));
     m.def(
         "return_optional_bs",
         []() {
@@ -363,7 +363,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             static auto *o = new OptionalPairString(return_optional_pair_string());
             return o;
         },
-        py::return_value_policy_pack({rvpb, rvpc}));
+        py::return_value_policy_pack({{rvpb, rvpc}}));
 #endif
 
     m.attr("PYBIND11_HAS_VARIANT") =

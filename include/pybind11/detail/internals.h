@@ -237,7 +237,7 @@ inline bool raise_err(PyObject *exc_type, const char *msg) {
         raise_from(exc_type, msg);
         return true;
     }
-    PyErr_SetString(exc_type, msg);
+    set_error(exc_type, msg);
     return false;
 }
 
@@ -324,6 +324,7 @@ inline internals **get_internals_pp_from_capsule(handle obj) {
     void *raw_ptr = PyCapsule_GetPointer(obj.ptr(), /*name=*/nullptr);
     if (raw_ptr == nullptr) {
         raise_from(PyExc_SystemError, "pybind11::detail::get_internals_pp_from_capsule() FAILED");
+        throw error_already_set();
     }
     return static_cast<internals **>(raw_ptr);
 }

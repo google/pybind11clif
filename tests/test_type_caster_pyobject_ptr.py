@@ -13,8 +13,16 @@ def test_cast_from_pyobject_ptr():
     assert m.cast_from_pyobject_ptr() == 6758
 
 
-def test_cast_to_pyobject_ptr():
-    assert m.cast_to_pyobject_ptr(ValueHolder(24)) == 76
+def test_cast_handle_to_pyobject_ptr():
+    assert m.cast_handle_to_pyobject_ptr(ValueHolder(24)) == 76
+
+
+def test_cast_object_to_pyobject_ptr():
+    assert m.cast_object_to_pyobject_ptr(ValueHolder(43)) == 257
+
+
+def test_cast_list_to_pyobject_ptr():
+    assert m.cast_list_to_pyobject_ptr([1, 2, 3, 4, 5]) == 395
 
 
 def test_return_pyobject_ptr():
@@ -89,3 +97,18 @@ def test_return_list_pyobject_ptr_reference():
     # Insert `while True:` as the first line of this function and monitor the
     # process RES (Resident Memory Size) with the Unix top command.
     assert m.dec_ref_each_pyobject_ptr(vec_obj) == 2
+
+
+def test_type_caster_name_via_incompatible_function_arguments_type_error():
+    with pytest.raises(TypeError, match=r"1\. \(arg0: object, arg1: int\) -> None"):
+        m.pass_pyobject_ptr_and_int(ValueHolder(101), ValueHolder(202))
+
+
+def test_pyobject_ptr_from_handle_nullptr():
+    assert m.pyobject_ptr_from_handle_nullptr() == "SUCCESS"
+
+
+def test_py_arg_handle_nullptr():
+    assert m.py_arg_handle_nullptr(None) == "NoneType"
+    assert m.py_arg_handle_nullptr([]) == "list"
+    assert m.py_arg_handle_nullptr() == "ptr == nullptr"

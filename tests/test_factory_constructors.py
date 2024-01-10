@@ -77,7 +77,7 @@ def test_init_factory_signature(msg):
             1. m.factory_constructors.TestFactory1(arg0: m.factory_constructors.tag.unique_ptr_tag, arg1: int)
             2. m.factory_constructors.TestFactory1(arg0: str)
             3. m.factory_constructors.TestFactory1(arg0: m.factory_constructors.tag.pointer_tag)
-            4. m.factory_constructors.TestFactory1(arg0: handle, arg1: int, arg2: handle)
+            4. m.factory_constructors.TestFactory1(arg0: object, arg1: int, arg2: object)
 
         Invoked with: 'invalid', 'constructor', 'arguments'
     """
@@ -95,7 +95,7 @@ def test_init_factory_signature(msg):
 
         3. __init__(self: m.factory_constructors.TestFactory1, arg0: m.factory_constructors.tag.pointer_tag) -> None
 
-        4. __init__(self: m.factory_constructors.TestFactory1, arg0: handle, arg1: int, arg2: handle) -> None
+        4. __init__(self: m.factory_constructors.TestFactory1, arg0: object, arg1: int, arg2: object) -> None
     """
     )
 
@@ -515,3 +515,10 @@ def test_invalid_self():
             str(excinfo.value)
             == "__init__(self, ...) called with invalid or missing `self` argument"
         )
+
+
+def test_factory_error_already_set():
+    obj = m.FactoryErrorAlreadySet(False)
+    assert isinstance(obj, m.FactoryErrorAlreadySet)
+    with pytest.raises(ValueError, match="factory sets error and returns nullptr"):
+        m.FactoryErrorAlreadySet(True)

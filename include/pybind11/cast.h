@@ -67,13 +67,15 @@ using make_caster = make_caster_for_intrinsic<intrinsic_t<type>>;
 // Shortcut for calling a caster's `cast_op_type` cast operator for casting a type_caster to a T
 template <typename T>
 typename make_caster<T>::template cast_op_type<T> cast_op(make_caster<T> &caster) {
-    return caster.operator typename make_caster<T>::template cast_op_type<T>();
+    using result_t = typename make_caster<T>::template cast_op_type<T>; // See PR #4893
+    return caster.operator result_t();
 }
 template <typename T>
 typename make_caster<T>::template cast_op_type<typename std::add_rvalue_reference<T>::type>
 cast_op(make_caster<T> &&caster) {
-    return std::move(caster).operator typename make_caster<T>::
-        template cast_op_type<typename std::add_rvalue_reference<T>::type>();
+    using result_t = typename make_caster<T>::template cast_op_type<
+        typename std::add_rvalue_reference<T>::type>; // See PR #4893
+    return std::move(caster).operator result_t();
 }
 
 template <typename EnumType>
@@ -817,7 +819,7 @@ public:
     }
 
     static constexpr auto name
-        = const_name("Tuple[") + concat(make_caster<Ts>::name...) + const_name("]");
+        = const_name("tuple[") + concat(make_caster<Ts>::name...) + const_name("]");
 
     template <typename T>
     using cast_op_type = type;
@@ -1044,6 +1046,10 @@ struct handle_type_name<bytes> {
     static constexpr auto name = const_name(PYBIND11_BYTES_NAME);
 };
 template <>
+struct handle_type_name<buffer> {
+    static constexpr auto name = const_name("Buffer");
+};
+template <>
 struct handle_type_name<int_> {
     static constexpr auto name = const_name("int");
 };
@@ -1060,8 +1066,20 @@ struct handle_type_name<float_> {
     static constexpr auto name = const_name("float");
 };
 template <>
+struct handle_type_name<function> {
+    static constexpr auto name = const_name("Callable");
+};
+template <>
+struct handle_type_name<handle> {
+    static constexpr auto name = handle_type_name<object>::name;
+};
+template <>
 struct handle_type_name<none> {
     static constexpr auto name = const_name("None");
+};
+template <>
+struct handle_type_name<sequence> {
+    static constexpr auto name = const_name("Sequence");
 };
 template <>
 struct handle_type_name<args> {
@@ -1171,6 +1189,7 @@ struct return_value_policy_override<
     static return_value_policy policy(return_value_policy p) {
         return !std::is_lvalue_reference<Return>::value && !std::is_pointer<Return>::value
                        && p != return_value_policy::_clif_automatic
+                       && p != return_value_policy::_return_as_bytes
                    ? return_value_policy::move
                    : p;
     }
@@ -1236,13 +1255,31 @@ T cast(const handle &handle) {
 }
 
 // Note that `cast<PyObject *>(obj)` increments the reference count of `obj`.
-// This is necessary for the case that `obj` is a temporary.
+// This is necessary for the case that `obj` is a temporary, and could
+// not possibly be different, given
+// 1. the established convention that the passed `handle` is borrowed, and
+// 2. we don't want to force all generic code using `cast<T>()` to special-case
+//    handling of `T` = `PyObject *` (to increment the reference count there).
 // It is the responsibility of the caller to ensure that the reference count
 // is decremented.
 template <typename T,
-          detail::enable_if_t<detail::is_same_ignoring_cvref<T, PyObject *>::value, int> = 0>
-T cast(const handle &handle) {
+          typename Handle,
+          detail::enable_if_t<detail::is_same_ignoring_cvref<T, PyObject *>::value
+                                  && detail::is_same_ignoring_cvref<Handle, handle>::value,
+                              int>
+          = 0>
+T cast(Handle &&handle) {
     return handle.inc_ref().ptr();
+}
+// To optimize way an inc_ref/dec_ref cycle:
+template <typename T,
+          typename Object,
+          detail::enable_if_t<detail::is_same_ignoring_cvref<T, PyObject *>::value
+                                  && detail::is_same_ignoring_cvref<Object, object>::value,
+                              int>
+          = 0>
+T cast(Object &&obj) {
+    return obj.release().ptr();
 }
 
 // C++ type -> py::object
@@ -1498,6 +1535,8 @@ struct arg : detail::arg_base {
     from_python_policies m_policies;
 };
 
+struct nullptr_default_arg {};
+
 /// \ingroup annotations
 /// Annotation for arguments with values
 struct arg_v : arg {
@@ -1507,6 +1546,16 @@ struct arg_v : arg {
 private:
 #endif
     friend struct arg_base;
+
+    arg_v(arg &&base, nullptr_default_arg, const char *descr = nullptr)
+        : arg(base), value(), value_is_nullptr(true), descr(descr)
+#if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
+          ,
+          type("pybind11::nullptr_default_arg")
+#endif
+    {
+    }
+
     template <typename T>
     arg_v(arg &&base, T &&x, const char *descr = nullptr)
         : arg(base), value(reinterpret_steal<object>(detail::make_caster<T>::cast(
@@ -1550,6 +1599,7 @@ public:
 
     /// The default value
     object value;
+    bool value_is_nullptr = false;
     /// The (optional) description of the default value
     const char *descr;
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
@@ -1600,7 +1650,13 @@ inline namespace literals {
 /** \rst
     String literal version of `arg`
  \endrst */
-constexpr detail::arg_base operator"" _a(const char *name, size_t) {
+constexpr detail::arg_base
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 5
+operator"" _a // gcc 4.8.5 insists on having a space (hard error).
+#else
+operator""_a // clang 17 generates a deprecation warning if there is a space.
+#endif
+    (const char *name, size_t) {
     return detail::arg_base(name);
 }
 } // namespace literals

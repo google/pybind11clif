@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define PYBIND11_HAS_CROSS_EXTENSION_SHARED_STATE
+
 #include "common.h"
 
 #if defined(WITH_THREAD) && defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
@@ -34,6 +36,7 @@ inline object get_python_state_dict() {
 #endif
     if (!state_dict) {
         raise_from(PyExc_SystemError, "pybind11::detail::get_python_state_dict() FAILED");
+        throw error_already_set();
     }
     return state_dict;
 }
@@ -93,6 +96,7 @@ struct cross_extension_shared_state {
                         " Retrieve payload_type** from capsule FAILED for ABI ID \""
                         + std::string(AdapterType::abi_id()) + "\"")
                            .c_str());
+            throw error_already_set();
         }
         payload_pp() = static_cast<payload_type **>(raw_ptr);
         return *payload_pp();
