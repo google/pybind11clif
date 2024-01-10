@@ -8,14 +8,14 @@ namespace pybind11_tests {
 namespace stl_no_default_ctor {
 
 struct Node {
-    constexpr Node() {} // COMMENT OUT TO REPRODUCE PROBLEM.
+    constexpr Node() = default; // COMMENT OUT TO REPRODUCE PROBLEM.
     explicit constexpr Node(int val) : val{val} {}
 
     int val = -88;
 };
 
 struct NodeArray {
-    explicit constexpr NodeArray(int i) : arr({Node(10 + i), Node(20 + i)}) {}
+    explicit constexpr NodeArray(int i) : arr{{Node(10 + i), Node(20 + i)}} {}
 
     std::array<Node, 2> arr;
 };
