@@ -420,13 +420,35 @@ public:
         return l.release();
     }
 
-    PYBIND11_TYPE_CASTER_RVPP(ArrayType,
-                              const_name<Resizable>(const_name(""), const_name("Annotated["))
-                                  + const_name("list[") + value_conv::name + const_name("]")
-                                  + const_name<Resizable>(const_name(""),
-                                                          const_name(", FixedSize(")
-                                                              + const_name<Size>()
-                                                              + const_name(")]")));
+protected:
+    ArrayType value;
+
+public:
+    static constexpr auto name
+        = const_name<Resizable>(const_name(""), const_name("Annotated[")) + const_name("list[")
+          + value_conv::name + const_name("]")
+          + const_name<Resizable>(
+              const_name(""), const_name(", FixedSize(") + const_name<Size>() + const_name(")]"));
+
+    template <typename T_, enable_if_t<std::is_same<ArrayType, remove_cv_t<T_>>::value, int> = 0>
+    static handle cast(T_ *src, const return_value_policy_pack &policy, handle parent) {
+        if (!src) {
+            return none().release();
+        }
+        if (policy == return_value_policy::take_ownership) {
+            auto h = cast(std::move(*src), policy, parent);
+            delete src;
+            return h;
+        }
+        return cast(*src, policy, parent);
+    }
+
+    operator ArrayType *() { return &value; }
+    operator ArrayType &() { return value; }
+    operator ArrayType &&() && { return std::move(value); }
+
+    template <typename T_>
+    using cast_op_type = movable_cast_op_type<T_>;
 };
 
 template <typename Type, size_t Size>
