@@ -15,7 +15,7 @@ struct Node {
 };
 
 struct NodeArray {
-    explicit constexpr NodeArray(int i) : arr{Node(10 + i), Node(20 + i)} {}
+    explicit constexpr NodeArray(int i) : arr({Node(10 + i), Node(20 + i)}) {}
 
     std::array<Node, 2> arr;
 };

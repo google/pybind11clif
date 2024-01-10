@@ -443,8 +443,11 @@ public:
         return cast(*src, policy, parent);
     }
 
+    // NOLINTNEXTLINE(google-explicit-constructor)
     operator ArrayType *() { return &value; }
+    // NOLINTNEXTLINE(google-explicit-constructor)
     operator ArrayType &() { return value; }
+    // NOLINTNEXTLINE(google-explicit-constructor)
     operator ArrayType &&() && { return std::move(value); }
 
     template <typename T_>
