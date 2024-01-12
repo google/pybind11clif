@@ -203,7 +203,7 @@ TEST_SUBMODULE(stl, m) {
 
     struct NoDefaultCtor {
         explicit constexpr NoDefaultCtor(int val) : val{val} {}
-        int val = -88;
+        int val;
     };
 
     struct NoDefaultCtorArray {
