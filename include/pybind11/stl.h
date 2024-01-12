@@ -352,21 +352,47 @@ struct type_caster<std::deque<Type, Alloc>> : list_caster<std::deque<Type, Alloc
 template <typename Type, typename Alloc>
 struct type_caster<std::list<Type, Alloc>> : list_caster<std::list<Type, Alloc>, Type> {};
 
+template <typename ArrayType, typename V, size_t... I>
+ArrayType vector_to_array_impl(V &&v, index_sequence<I...>) {
+    return {{std::move(v[I])...}};
+}
+
+// Based on https://en.cppreference.com/w/cpp/container/array/to_array
+template <typename ArrayType, size_t N, typename V>
+ArrayType vector_to_array(V &&v) {
+    return vector_to_array_impl<ArrayType, V>(std::forward<V>(v), make_index_sequence<N>{});
+}
+
 template <typename ArrayType, typename Value, bool Resizable, size_t Size = 0>
 struct array_caster {
     using value_conv = make_caster<Value>;
 
 private:
     template <bool R = Resizable>
-    bool require_size(enable_if_t<R, size_t> size) {
-        if (value.size() != size) {
-            value.resize(size);
-        }
+    bool require_size(enable_if_t<R, size_t>) {
         return true;
     }
+
     template <bool R = Resizable>
     bool require_size(enable_if_t<!R, size_t> size) {
         return size == Size;
+    }
+
+    using temp_space_type = std::vector<Value>;
+
+    template <bool R = Resizable>
+    void move_temp_to_value(enable_if_t<R, temp_space_type &&> temp) {
+        value.reset(new ArrayType{});
+        value->resize(temp.size());
+        size_t ctr = 0;
+        for (auto elem : temp) {
+            (*value)[ctr++] = std::move(elem);
+        }
+    }
+
+    template <bool R = Resizable>
+    void move_temp_to_value(enable_if_t<!R, temp_space_type &&> temp) {
+        value.reset(new ArrayType{vector_to_array<ArrayType, Size>(std::move(temp))});
     }
 
     bool convert_elements(handle seq, bool convert) {
@@ -374,14 +400,16 @@ private:
         if (!require_size(l.size())) {
             return false;
         }
-        size_t ctr = 0;
+        temp_space_type temp;
+        temp.reserve(l.size());
         for (auto it : l) {
             value_conv conv;
             if (!conv.load(it, convert)) {
                 return false;
             }
-            value[ctr++] = cast_op<Value &&>(std::move(conv));
+            temp.emplace_back(cast_op<Value &&>(std::move(conv)));
         }
+        move_temp_to_value(std::move(temp));
         return true;
     }
 
@@ -421,7 +449,7 @@ public:
     }
 
 protected:
-    ArrayType value;
+    std::unique_ptr<ArrayType> value;
 
 public:
     static constexpr auto name
@@ -444,11 +472,11 @@ public:
     }
 
     // NOLINTNEXTLINE(google-explicit-constructor)
-    operator ArrayType *() { return &value; }
+    operator ArrayType *() { return &(*value); }
     // NOLINTNEXTLINE(google-explicit-constructor)
-    operator ArrayType &() { return value; }
+    operator ArrayType &() { return *value; }
     // NOLINTNEXTLINE(google-explicit-constructor)
-    operator ArrayType &&() && { return std::move(value); }
+    operator ArrayType &&() && { return std::move(*value); }
 
     template <typename T_>
     using cast_op_type = movable_cast_op_type<T_>;

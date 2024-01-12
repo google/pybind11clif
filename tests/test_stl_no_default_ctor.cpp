@@ -8,7 +8,6 @@ namespace pybind11_tests {
 namespace stl_no_default_ctor {
 
 struct Node {
-    constexpr Node() = default; // COMMENT OUT TO REPRODUCE PROBLEM.
     explicit constexpr Node(int val) : val{val} {}
 
     int val = -88;
