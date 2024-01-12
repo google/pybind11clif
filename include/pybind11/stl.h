@@ -368,6 +368,8 @@ struct array_caster {
     using value_conv = make_caster<Value>;
 
 private:
+    std::unique_ptr<ArrayType> value;
+
     template <bool R = Resizable, enable_if_t<R, int> = 0>
     bool convert_elements(handle seq, bool convert) {
         auto l = reinterpret_borrow<sequence>(seq);
@@ -446,16 +448,6 @@ public:
         return l.release();
     }
 
-protected:
-    std::unique_ptr<ArrayType> value;
-
-public:
-    static constexpr auto name
-        = const_name<Resizable>(const_name(""), const_name("Annotated[")) + const_name("list[")
-          + value_conv::name + const_name("]")
-          + const_name<Resizable>(
-              const_name(""), const_name(", FixedSize(") + const_name<Size>() + const_name(")]"));
-
     // Code copied from PYBIND11_TYPE_CASTER macro.
     template <typename T_, enable_if_t<std::is_same<ArrayType, remove_cv_t<T_>>::value, int> = 0>
     static handle cast(T_ *src, const return_value_policy_pack &policy, handle parent) {
@@ -479,6 +471,12 @@ public:
 
     template <typename T_>
     using cast_op_type = movable_cast_op_type<T_>;
+
+    static constexpr auto name
+        = const_name<Resizable>(const_name(""), const_name("Annotated[")) + const_name("list[")
+          + value_conv::name + const_name("]")
+          + const_name<Resizable>(
+              const_name(""), const_name(", FixedSize(") + const_name<Size>() + const_name(")]"));
 };
 
 template <typename Type, size_t Size>
