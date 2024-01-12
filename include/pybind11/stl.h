@@ -458,6 +458,7 @@ public:
           + const_name<Resizable>(
               const_name(""), const_name(", FixedSize(") + const_name<Size>() + const_name(")]"));
 
+    // Code copied from PYBIND11_TYPE_CASTER macro.
     template <typename T_, enable_if_t<std::is_same<ArrayType, remove_cv_t<T_>>::value, int> = 0>
     static handle cast(T_ *src, const return_value_policy_pack &policy, handle parent) {
         if (!src) {
@@ -465,7 +466,7 @@ public:
         }
         if (policy == return_value_policy::take_ownership) {
             auto h = cast(std::move(*src), policy, parent);
-            delete src;
+            delete src; // WARNING: Assumes `src` was allocated with `new`.
             return h;
         }
         return cast(*src, policy, parent);
