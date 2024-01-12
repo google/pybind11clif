@@ -368,39 +368,37 @@ struct array_caster {
     using value_conv = make_caster<Value>;
 
 private:
-    template <bool R = Resizable>
-    bool require_size(enable_if_t<R, size_t>) {
+    template <bool R = Resizable, enable_if_t<R, int> = 0>
+    bool convert_elements(handle seq, bool convert) {
+        auto l = reinterpret_borrow<sequence>(seq);
+        value.reset(new ArrayType{});
+        // For the resize to work, `Value` must be default constructible.
+        // For `std::valarray`, this is a requirement:
+        // https://en.cppreference.com/w/cpp/named_req/NumericType
+        value->resize(l.size());
+        size_t ctr = 0;
+        for (auto it : l) {
+            value_conv conv;
+            if (!conv.load(it, convert)) {
+                return false;
+            }
+            (*value)[ctr++] = cast_op<Value &&>(std::move(conv));
+        }
         return true;
     }
 
-    template <bool R = Resizable>
-    bool require_size(enable_if_t<!R, size_t> size) {
-        return size == Size;
-    }
-
-    using temp_space_type = std::vector<Value>;
-
-    template <bool R = Resizable>
-    void move_temp_to_value(enable_if_t<R, temp_space_type &&> temp) {
-        value.reset(new ArrayType{});
-        value->resize(temp.size());
-        size_t ctr = 0;
-        for (auto elem : temp) {
-            (*value)[ctr++] = std::move(elem);
-        }
-    }
-
-    template <bool R = Resizable>
-    void move_temp_to_value(enable_if_t<!R, temp_space_type &&> temp) {
-        value.reset(new ArrayType(vector_to_array<ArrayType, Size>(std::move(temp))));
-    }
-
+    template <bool R = Resizable, enable_if_t<!R, int> = 0>
     bool convert_elements(handle seq, bool convert) {
         auto l = reinterpret_borrow<sequence>(seq);
-        if (!require_size(l.size())) {
+        if (l.size() != Size) {
             return false;
         }
-        temp_space_type temp;
+        // The `temp` storage is needed to support `Value` types that are not
+        // default-constructible.
+        // Deliberate choice: no template specializations, for simplicity, and
+        // because the compile time overhead for the specializations is deemed
+        // more significant than the runtime overhead for the `temp` storage.
+        std::vector<Value> temp;
         temp.reserve(l.size());
         for (auto it : l) {
             value_conv conv;
@@ -409,7 +407,7 @@ private:
             }
             temp.emplace_back(cast_op<Value &&>(std::move(conv)));
         }
-        move_temp_to_value(std::move(temp));
+        value.reset(new ArrayType(vector_to_array<ArrayType, Size>(std::move(temp))));
         return true;
     }
 
