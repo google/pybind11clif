@@ -392,7 +392,7 @@ private:
 
     template <bool R = Resizable>
     void move_temp_to_value(enable_if_t<!R, temp_space_type &&> temp) {
-        value.reset(new ArrayType{vector_to_array<ArrayType, Size>(std::move(temp))});
+        value.reset(new ArrayType(vector_to_array<ArrayType, Size>(std::move(temp))));
     }
 
     bool convert_elements(handle seq, bool convert) {
