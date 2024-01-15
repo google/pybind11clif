@@ -11,11 +11,14 @@
 
 #include "pybind11.h"
 #include "detail/common.h"
+#include "detail/descr.h"
+#include "detail/type_caster_base.h"
 
 #include <deque>
 #include <initializer_list>
 #include <list>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <set>
 #include <unordered_map>
