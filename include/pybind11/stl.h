@@ -377,7 +377,8 @@ private:
     bool convert_elements(handle seq, bool convert) {
         auto l = reinterpret_borrow<sequence>(seq);
         value.reset(new ArrayType{});
-        // For the resize to work, `Value` must be default constructible.
+        // Using `resize` to preserve the behavior exactly as it was before google/pywrapcc#30034
+        // For the `resize` to work, `Value` must be default constructible.
         // For `std::valarray`, this is a requirement:
         // https://en.cppreference.com/w/cpp/named_req/NumericType
         value->resize(l.size());
@@ -452,6 +453,7 @@ public:
     }
 
     // Code copied from PYBIND11_TYPE_CASTER macro.
+    // Intentionally preserving the behavior exactly as it was before google/pywrapcc#30034
     template <typename T_, enable_if_t<std::is_same<ArrayType, remove_cv_t<T_>>::value, int> = 0>
     static handle cast(T_ *src, const return_value_policy_pack &policy, handle parent) {
         if (!src) {
