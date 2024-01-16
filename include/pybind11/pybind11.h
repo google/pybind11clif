@@ -1831,7 +1831,6 @@ public:
         record.type_align = alignof(conditional_t<has_alias, type_alias, type> &);
         record.holder_size = sizeof(holder_type);
         record.init_instance = init_instance;
-        record.dealloc = dealloc;
 
         // A more fitting name would be uses_unique_ptr_holder.
         record.default_holder = detail::is_instantiation<std::unique_ptr, holder_type>::value;
@@ -1843,6 +1842,12 @@ public:
 
         /* Process optional arguments, if any */
         process_attributes<Extra...>::init(extra..., &record);
+
+        if (record.release_gil_before_calling_cpp_dtor) {
+            record.dealloc = dealloc_release_gil_before_calling_cpp_dtor;
+        } else {
+            record.dealloc = dealloc_without_manipulating_gil;
+        }
 
         generic_type_initialize(record);
 
@@ -2194,7 +2199,8 @@ private:
     }
 
     /// Deallocates an instance; via holder, if constructed; otherwise via operator delete.
-    static void dealloc(detail::value_and_holder &v_h) {
+    static void dealloc_impl(detail::value_and_holder &v_h,
+                             bool release_gil_before_calling_cpp_dtor) {
         // We could be deallocating because we are cleaning up after a Python exception.
         // If so, the Python error indicator will be set. We need to clear that before
         // running the destructor, in case the destructor code calls more Python.
@@ -2202,14 +2208,33 @@ private:
         // throw error_already_set from the C++ destructor which is forbidden and triggers
         // std::terminate().
         error_scope scope;
-        if (v_h.holder_constructed()) {
-            v_h.holder<holder_type>().~holder_type();
-            v_h.set_holder_constructed(false);
-        } else {
-            detail::call_operator_delete(
-                v_h.value_ptr<type>(), v_h.type->type_size, v_h.type->type_align);
+        PyThreadState *py_ts = release_gil_before_calling_cpp_dtor ? PyEval_SaveThread() : nullptr;
+        try {
+            if (v_h.holder_constructed()) {
+                v_h.holder<holder_type>().~holder_type();
+                v_h.set_holder_constructed(false);
+            } else {
+                detail::call_operator_delete(
+                    v_h.value_ptr<type>(), v_h.type->type_size, v_h.type->type_align);
+            }
+        } catch (...) {
+            if (py_ts != nullptr) {
+                PyEval_RestoreThread(py_ts);
+            }
+            throw;
+        }
+        if (py_ts != nullptr) {
+            PyEval_RestoreThread(py_ts);
         }
         v_h.value_ptr() = nullptr;
+    }
+
+    static void dealloc_without_manipulating_gil(detail::value_and_holder &v_h) {
+        dealloc_impl(v_h, false);
+    }
+
+    static void dealloc_release_gil_before_calling_cpp_dtor(detail::value_and_holder &v_h) {
+        dealloc_impl(v_h, true);
     }
 
     static detail::function_record *get_function_record(handle h) {
