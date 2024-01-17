@@ -987,6 +987,7 @@ jobs:
           mingw-w64-${{matrix.env}}-gcc
           mingw-w64-${{matrix.env}}-python-pip
           mingw-w64-${{matrix.env}}-python-numpy
+          mingw-w64-${{matrix.env}}-python-scipy
           mingw-w64-${{matrix.env}}-cmake
           mingw-w64-${{matrix.env}}-make
           mingw-w64-${{matrix.env}}-python-pytest
