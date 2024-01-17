@@ -310,7 +310,7 @@ private:
         auto s = reinterpret_borrow<sequence>(seq);
         value.clear();
         reserve_maybe(s, &value);
-        for (auto it : seq) {
+        for (const auto &it : seq) {
             value_conv conv;
             if (!conv.load(it, convert)) {
                 return false;
@@ -375,7 +375,7 @@ private:
             return false;
         }
         size_t ctr = 0;
-        for (auto it : l) {
+        for (const auto &it : l) {
             value_conv conv;
             if (!conv.load(it, convert)) {
                 return false;
