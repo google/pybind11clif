@@ -2199,12 +2199,12 @@ private:
     }
 
     // Deallocates an instance; via holder, if constructed; otherwise via operator delete.
-    // We could be deallocating because we are cleaning up after a Python exception.
-    // If so, the Python error indicator will be set. It needs to cleared before
-    // this function is called, in case the C++ destructor code calls more Python.
-    // If we don't, the Python API will exit with an exception, and pybind11 will
-    // throw error_already_set from the C++ destructor which is forbidden and triggers
-    // std::terminate().
+    // NOTE: The Python error indicator needs to cleared BEFORE this function is called.
+    // This is because we could be deallocating while cleaning up after a Python exception.
+    // If the error indicator is not cleared but the C++ destructor code makes Python C API
+    // calls, those calls are likely to generate a new exception, and pybind11 will then
+    // throw `error_already_set` from the C++ destructor. This is forbidden and will
+    // trigger std::terminate().
     static void dealloc_impl(detail::value_and_holder &v_h) {
         if (v_h.holder_constructed()) {
             v_h.holder<holder_type>().~holder_type();
