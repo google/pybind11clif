@@ -582,6 +582,7 @@ public:
                 wrapper->owned = false;
                 break;
 
+            case return_value_policy::_clif_automatic:
             case return_value_policy::copy:
                 if (copy_constructor) {
                     valueptr = copy_constructor(src);

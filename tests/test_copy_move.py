@@ -130,3 +130,8 @@ def test_pytype_rvalue_cast():
 
     value = m.get_pytype_rvalue_castissue(1.0)
     assert value == 1
+
+
+def test_py_cast_using_clif_automatic():
+    obj = m.py_cast_using_clif_automatic()
+    assert obj.__class__.__name__ == "PyCastUsingClifAutomaticTestType"
