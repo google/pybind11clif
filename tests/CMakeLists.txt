@@ -178,6 +178,7 @@ set(PYBIND11_TEST_FILES
     test_stl_binders
     test_tagbased_polymorphic
     test_thread
+    test_type_caster_addressof
     test_type_caster_odr_guard_1
     test_type_caster_odr_guard_2
     test_type_caster_pyobject_ptr
