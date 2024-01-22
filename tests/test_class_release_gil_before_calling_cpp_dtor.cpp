@@ -41,11 +41,13 @@ TEST_SUBMODULE(class_release_gil_before_calling_cpp_dtor, m) {
     py::class_<ProbeType<1>>(m, "ProbeType1", py::release_gil_before_calling_cpp_dtor())
         .def(py::init<std::string>());
 
-    m.def("GetPyGILState_Check_Result", [](const std::string &unique_key) -> std::string {
+    m.def("PopPyGILState_Check_Result", [](const std::string &unique_key) -> std::string {
         RegistryType &reg = PyGILState_Check_Results();
         if (reg.count(unique_key) == 0) {
             return "MISSING";
         }
-        return std::to_string(reg[unique_key]);
+        int res = reg[unique_key];
+        reg.erase(unique_key);
+        return std::to_string(res);
     });
 }
