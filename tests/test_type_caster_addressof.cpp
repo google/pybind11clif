@@ -2,19 +2,19 @@
 
 #include "pybind11_tests.h"
 
-#include <string>
-#include <vector>
+#include <memory>
 
 namespace pybind11_tests {
 namespace type_caster_addressof {
 
 template <int> // Using int as a trick to easily generate a series of types.
 class UnusualOpRef {
-private:
-    std::vector<std::string> non_trivial_member;
-
 public:
-    std::vector<std::string> operator&() { return non_trivial_member; }
+    using NonTrivialType = std::shared_ptr<int>; // Almost any non-trivial type will do.
+    NonTrivialType operator&() { return non_trivial_member; }
+
+private:
+    NonTrivialType non_trivial_member;
 };
 
 } // namespace type_caster_addressof
