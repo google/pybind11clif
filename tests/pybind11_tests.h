@@ -3,6 +3,8 @@
 #include <pybind11/eval.h>
 #include <pybind11/pybind11.h>
 
+#include <memory>
+
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -50,6 +52,15 @@ public:
 union IntFloat {
     int i;
     float f;
+};
+
+class UnusualOpRef {
+public:
+    using NonTrivialType = std::shared_ptr<int>; // Almost any non-trivial type will do.
+    NonTrivialType operator&() { return non_trivial_member; } // UNUSUAL operator.
+
+private:
+    NonTrivialType non_trivial_member;
 };
 
 /// Custom cast-only type that casts to a string "rvalue" or "lvalue" depending on the cast

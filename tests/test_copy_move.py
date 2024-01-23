@@ -132,6 +132,12 @@ def test_pytype_rvalue_cast():
     assert value == 1
 
 
+def test_unusual_op_ref():
+    # Merely to test that this still exists and built successfully.
+    assert m.CallCastUnusualOpRefConstRef().__class__.__name__ == "UnusualOpRef"
+    assert m.CallCastUnusualOpRefMovable().__class__.__name__ == "UnusualOpRef"
+
+
 def test_py_cast_using_clif_automatic():
     obj = m.py_cast_using_clif_automatic()
     assert obj.__class__.__name__ == "PyCastUsingClifAutomaticTestType"
