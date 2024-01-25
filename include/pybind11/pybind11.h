@@ -403,7 +403,13 @@ protected:
         strdup_guard guarded_strdup;
 
         /* Create copies of all referenced C-style strings */
-        rec->name = guarded_strdup(rec->name ? rec->name : "");
+        bool setstate_is_ctor = true;
+        if (rec->name && std::strcmp(rec->name, "@__setstate__") == 0) {
+            rec->name = guarded_strdup(rec->name + 1);
+            setstate_is_ctor = false;
+        } else {
+            rec->name = guarded_strdup(rec->name ? rec->name : "");
+        }
         if (rec->doc) {
             rec->doc = guarded_strdup(rec->doc);
         }
@@ -419,7 +425,7 @@ protected:
         }
 
         rec->is_constructor = (std::strcmp(rec->name, "__init__") == 0)
-                              || (std::strcmp(rec->name, "__setstate__") == 0);
+                              || (setstate_is_ctor && std::strcmp(rec->name, "__setstate__") == 0);
 
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES) && !defined(PYBIND11_DISABLE_NEW_STYLE_INIT_WARNING)
         if (rec->is_constructor && !rec->is_new_style_constructor) {
