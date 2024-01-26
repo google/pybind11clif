@@ -47,7 +47,6 @@ void wrap_classes(py::module_ &m, const char *name_base, const char *name_drvd, 
 
 TEST_SUBMODULE(python_multiple_inheritance, m) {
     using namespace test_python_multiple_inheritance;
-    wrap_classes<0>(m, "CppBase", "CppDrvd");
-    wrap_classes<1>(
-        m, "CppBaseTypeAsMeta", "CppDrvdTypeAsMeta", py::metaclass((PyObject *) &PyType_Type));
+    wrap_classes<0>(m, "CppBase0", "CppDrvd0");
+    wrap_classes<1>(m, "CppBase1", "CppDrvd1", py::metaclass((PyObject *) &PyType_Type));
 }

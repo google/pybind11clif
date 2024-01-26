@@ -5,39 +5,74 @@ import pytest
 
 from pybind11_tests import python_multiple_inheritance as m
 
+#
+# Using default py::metaclass():
+#
 
-class PC(m.CppBase):
+
+class PC0(m.CppBase0):
     pass
 
 
-class PPCC(PC, m.CppDrvd):
+class PPCC0(PC0, m.CppDrvd0):
     pass
 
 
-class PCExplicitInitWithSuper(m.CppBase):
+class PCExplicitInitWithSuper0(m.CppBase0):
     def __init__(self, value):
         super().__init__(value + 1)
 
 
-class PCExplicitInitMissingSuper(m.CppBase):
+class PCExplicitInitMissingSuper0(m.CppBase0):
     def __init__(self, value):
         del value
 
 
-class PCExplicitInitMissingSuper2(m.CppBase):
+class PCExplicitInitMissingSuperB0(m.CppBase0):
     def __init__(self, value):
         del value
 
 
-def test_PC():
-    d = PC(11)
+#
+# Using py::metaclass((PyObject *) &PyType_Type):
+# COPY-PASTE block from above, replace 0 with 1:
+#
+
+
+class PC1(m.CppBase1):
+    pass
+
+
+class PPCC1(PC1, m.CppDrvd1):
+    pass
+
+
+class PCExplicitInitWithSuper1(m.CppBase1):
+    def __init__(self, value):
+        super().__init__(value + 1)
+
+
+class PCExplicitInitMissingSuper1(m.CppBase1):
+    def __init__(self, value):
+        del value
+
+
+class PCExplicitInitMissingSuperB1(m.CppBase1):
+    def __init__(self, value):
+        del value
+
+
+@pytest.mark.parametrize(("pc_type"), [PC0, PC1])
+def test_PC(pc_type):
+    d = pc_type(11)
     assert d.get_base_value() == 11
     d.reset_base_value(13)
     assert d.get_base_value() == 13
 
 
-def test_PPCC():
-    d = PPCC(11)
+@pytest.mark.parametrize(("ppcc_type"), [PPCC0, PPCC1])
+def test_PPCC(ppcc_type):
+    d = ppcc_type(11)
     assert d.get_drvd_value() == 33
     d.reset_drvd_value(55)
     assert d.get_drvd_value() == 55
@@ -52,18 +87,28 @@ def test_PPCC():
     assert d.get_base_value_from_drvd() == 30
 
 
-def testPCExplicitInitWithSuper():
-    d = PCExplicitInitWithSuper(14)
+@pytest.mark.parametrize(
+    ("pc_type"), [PCExplicitInitWithSuper0, PCExplicitInitWithSuper1]
+)
+def testPCExplicitInitWithSuper(pc_type):
+    d = pc_type(14)
     assert d.get_base_value() == 15
 
 
 @pytest.mark.parametrize(
-    ("derived_type"), [PCExplicitInitMissingSuper, PCExplicitInitMissingSuper2]
+    ("derived_type"), [PCExplicitInitMissingSuper0, PCExplicitInitMissingSuperB0]
 )
-def testPCExplicitInitMissingSuper(derived_type):
-    derived_type = PCExplicitInitMissingSuper
+def testPCExplicitInitMissingSuper0(derived_type):
     with pytest.raises(TypeError) as excinfo:
         derived_type(0)
     assert str(excinfo.value).endswith(
-        "python_multiple_inheritance.CppBase.__init__() must be called when overriding __init__"
+        ".__init__() must be called when overriding __init__"
     )
+
+
+@pytest.mark.parametrize(
+    ("derived_type"), [PCExplicitInitMissingSuper1, PCExplicitInitMissingSuperB1]
+)
+def testPCExplicitInitMissingSuper1(derived_type):
+    # UNDESIRABLE behavior: Wrapped C++ object is left uninitialized.
+    assert derived_type(0).__class__.__name__.startswith("PCExplicitInitMissingSuper")
