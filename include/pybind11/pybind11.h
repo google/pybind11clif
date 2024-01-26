@@ -394,6 +394,11 @@ protected:
         // it alive.
         auto *rec = unique_rec.get();
 
+        // Note the "@__setstate__" manipulation below.
+        rec->is_constructor = rec->name != nullptr
+                              && (std::strcmp(rec->name, "__init__") == 0
+                                  || std::strcmp(rec->name, "__setstate__") == 0);
+
         // Keep track of strdup'ed strings, and clean them up as long as the function's capsule
         // has not taken ownership yet (when `unique_rec.release()` is called).
         // Note: This cannot easily be fixed by a `unique_ptr` with custom deleter, because the
@@ -403,12 +408,13 @@ protected:
         strdup_guard guarded_strdup;
 
         /* Create copies of all referenced C-style strings */
-        bool setstate_is_ctor = true;
-        if (rec->name && std::strcmp(rec->name, "@__setstate__") == 0) {
+        if (rec->name == nullptr) {
+            rec->name = guarded_strdup("");
+        } else if (std::strcmp(rec->name, "@__setstate__") == 0) {
+            // See google/pywrapcc#30094 for background.
             rec->name = guarded_strdup(rec->name + 1);
-            setstate_is_ctor = false;
         } else {
-            rec->name = guarded_strdup(rec->name ? rec->name : "");
+            rec->name = guarded_strdup(rec->name);
         }
         if (rec->doc) {
             rec->doc = guarded_strdup(rec->doc);
@@ -423,9 +429,6 @@ protected:
                 a.descr = guarded_strdup(repr(a.value).cast<std::string>().c_str());
             }
         }
-
-        rec->is_constructor = (std::strcmp(rec->name, "__init__") == 0)
-                              || (setstate_is_ctor && std::strcmp(rec->name, "__setstate__") == 0);
 
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES) && !defined(PYBIND11_DISABLE_NEW_STYLE_INIT_WARNING)
         if (rec->is_constructor && !rec->is_new_style_constructor) {
