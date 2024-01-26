@@ -186,8 +186,7 @@ set(PYBIND11_TEST_FILES
     test_unnamed_namespace_a
     test_unnamed_namespace_b
     test_vector_unique_ptr_member
-    test_virtual_functions
-    test_wip)
+    test_virtual_functions)
 
 # Invoking cmake with something like:
 #     cmake -DPYBIND11_TEST_OVERRIDE="test_callbacks.cpp;test_pickling.cpp" ..

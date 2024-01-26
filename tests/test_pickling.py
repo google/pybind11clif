@@ -1,3 +1,4 @@
+import copy
 import pickle
 import re
 
@@ -91,3 +92,22 @@ def test_roundtrip_simple_cpp_derived():
     # Issue #3062: pickleable base C++ classes can incur object slicing
     #              if derived typeid is not registered with pybind11
     assert not m.check_dynamic_cast_SimpleCppDerived(p2)
+
+
+#
+# exercise_getinitargs_getstate_setstate
+#
+def test_StoreTwoWithState():
+    obj = m.StoreTwoWithState(-38, 27)
+    assert obj.__getinitargs__() == (-38, 27)
+    assert obj.__getstate__() == "blank"
+    obj.__setstate__("blue")
+    reduced = obj.__reduce_ex__()
+    assert reduced == (m.StoreTwoWithState, (-38, 27), "blue")
+    cpy = copy.deepcopy(obj)
+    assert cpy.__reduce_ex__() == reduced
+    assert pickle.HIGHEST_PROTOCOL > 0  # To be sure the loop below makes sense.
+    for protocol in range(-1, pickle.HIGHEST_PROTOCOL + 1):
+        serialized = pickle.dumps(obj, protocol)
+        restored = pickle.loads(serialized)
+        assert restored.__reduce_ex__() == reduced
