@@ -72,14 +72,14 @@ namespace exercise_getinitargs_getstate_setstate {
 
 class StoreTwoWithState {
 public:
-    StoreTwoWithState(int v0, int v1) : values{v0, v1}, state{"blank"} {}
-    const std::vector<int> &GetInitArgs() const { return values; }
-    const std::string &GetState() const { return state; }
-    void SetState(const std::string &state) { this->state = state; }
+    StoreTwoWithState(int v0, int v1) : values_{v0, v1}, state_{"blank"} {}
+    const std::vector<int> &GetInitArgs() const { return values_; }
+    const std::string &GetState() const { return state_; }
+    void SetState(const std::string &state) { state_ = state; }
 
 private:
-    std::vector<int> values;
-    std::string state;
+    std::vector<int> values_;
+    std::string state_;
 };
 
 void wrap(py::module m) {
