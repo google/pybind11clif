@@ -198,6 +198,25 @@ inline bool ensure_base_init_functions_were_called(PyObject *self) {
     return true;
 }
 
+#if defined(PYPY_VERSION)
+/// metaclass `__call__` function that is used to create all pybind11 objects.
+extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, PyObject *kwargs) {
+
+    // use the default metaclass call to create/initialize the object
+    PyObject *self = PyType_Type.tp_call(type, args, kwargs);
+    if (self == nullptr) {
+        return nullptr;
+    }
+
+    if (!ensure_base_init_functions_were_called(self)) {
+        Py_DECREF(self);
+        return nullptr;
+    }
+
+    return self;
+}
+#endif
+
 /// Cleanup the type-info for a pybind11-registered type.
 extern "C" inline void pybind11_meta_dealloc(PyObject *obj) {
     auto *type = (PyTypeObject *) obj;
@@ -262,6 +281,10 @@ inline PyTypeObject *make_default_metaclass() {
     type->tp_name = name;
     type->tp_base = type_incref(&PyType_Type);
     type->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
+
+#if defined(PYPY_VERSION)
+    type->tp_call = pybind11_meta_call;
+#endif
 
     type->tp_setattro = pybind11_meta_setattro;
     type->tp_getattro = pybind11_meta_getattro;
