@@ -96,7 +96,13 @@ def testPCExplicitInitWithSuper(pc_type):
 
 
 @pytest.mark.parametrize(
-    ("derived_type"), [PCExplicitInitMissingSuper0, PCExplicitInitMissingSuperB0]
+    ("derived_type"),
+    [
+        PCExplicitInitMissingSuper0,
+        PCExplicitInitMissingSuperB0,
+        PCExplicitInitMissingSuper1,
+        PCExplicitInitMissingSuperB1,
+    ],
 )
 def testPCExplicitInitMissingSuper0(derived_type):
     with pytest.raises(TypeError) as excinfo:
@@ -104,11 +110,3 @@ def testPCExplicitInitMissingSuper0(derived_type):
     assert str(excinfo.value).endswith(
         ".__init__() must be called when overriding __init__"
     )
-
-
-@pytest.mark.parametrize(
-    ("derived_type"), [PCExplicitInitMissingSuper1, PCExplicitInitMissingSuperB1]
-)
-def testPCExplicitInitMissingSuper1(derived_type):
-    # UNDESIRABLE behavior: Wrapped C++ object is left uninitialized.
-    assert derived_type(0).__class__.__name__.startswith("PCExplicitInitMissingSuper")

@@ -179,28 +179,20 @@ extern "C" inline PyObject *pybind11_meta_getattro(PyObject *obj, PyObject *name
     return PyType_Type.tp_getattro(obj, name);
 }
 
-/// metaclass `__call__` function that is used to create all pybind11 objects.
-extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, PyObject *kwargs) {
-
-    // use the default metaclass call to create/initialize the object
-    PyObject *self = PyType_Type.tp_call(type, args, kwargs);
-    if (self == nullptr) {
-        return nullptr;
-    }
-
-    // Ensure that the base __init__ function(s) were called
+// Ensure that the base __init__ function(s) were called.
+// Set TypeError and return false if not.
+// CALLER IS RESPONSIBLE for managing the self refcount appropriately.
+inline bool ensure_base_init_functions_were_called(PyObject *self) {
     values_and_holders vhs(self);
     for (const auto &vh : vhs) {
         if (!vh.holder_constructed() && !vhs.is_redundant_value_and_holder(vh)) {
             PyErr_Format(PyExc_TypeError,
                          "%.200s.__init__() must be called when overriding __init__",
                          get_fully_qualified_tp_name(vh.type->type).c_str());
-            Py_DECREF(self);
-            return nullptr;
+            return false;
         }
     }
-
-    return self;
+    return true;
 }
 
 /// Cleanup the type-info for a pybind11-registered type.
@@ -267,8 +259,6 @@ inline PyTypeObject *make_default_metaclass() {
     type->tp_name = name;
     type->tp_base = type_incref(&PyType_Type);
     type->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
-
-    type->tp_call = pybind11_meta_call;
 
     type->tp_setattro = pybind11_meta_setattro;
     type->tp_getattro = pybind11_meta_getattro;
@@ -340,6 +330,33 @@ inline bool deregister_instance(instance *self, void *valptr, const type_info *t
     return ret;
 }
 
+using derived_tp_init_registry_type
+    = std::unordered_map<PyTypeObject *, int (*)(PyObject *, PyObject *, PyObject *)>;
+
+inline derived_tp_init_registry_type *derived_tp_init_registry() {
+    // Intentionally leak the unordered_map:
+    // https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
+    static auto *singleton = new derived_tp_init_registry_type();
+    return singleton;
+}
+
+// This mechanism was originally developed here:
+// https://github.com/google/clif/commit/7cba87dd8385ab707c98e814ce742eeca877eb9e
+extern "C" inline int tp_init_intercepted(PyObject *self, PyObject *args, PyObject *kw) {
+    assert(PyType_Check(self) == 0);
+    const auto derived_tp_init = derived_tp_init_registry()->find(Py_TYPE(self));
+    if (derived_tp_init == derived_tp_init_registry()->end()) {
+        pybind11_fail("FATAL: Internal consistency check failed at " __FILE__
+                      ":" PYBIND11_TOSTRING(__LINE__));
+    }
+    int status = (*derived_tp_init->second)(self, args, kw);
+    if (status == 0 && !ensure_base_init_functions_were_called(self)) {
+        Py_DECREF(self);
+        return -1;
+    }
+    return status;
+}
+
 /// Instance creation function for all pybind11 types. It allocates the internal instance layout
 /// for holding C++ objects and holders.  Allocation is done lazily (the first time the instance is
 /// cast to a reference or pointer), and initialization is done by an `__init__` function.
@@ -360,9 +377,15 @@ inline PyObject *make_new_instance(PyTypeObject *type) {
     return self;
 }
 
+extern "C" int pybind11_object_init(PyObject *self, PyObject *, PyObject *);
+
 /// Instance creation function for all pybind11 types. It only allocates space for the
 /// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
 extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
+    if (type->tp_init != pybind11_object_init && derived_tp_init_registry()->count(type) == 0) {
+        (*derived_tp_init_registry())[type] = type->tp_init;
+        type->tp_init = tp_init_intercepted;
+    }
     return make_new_instance(type);
 }
 
