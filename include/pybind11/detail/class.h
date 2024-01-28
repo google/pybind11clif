@@ -351,8 +351,7 @@ extern "C" inline int tp_init_intercepted(PyObject *self, PyObject *args, PyObje
     }
     int status = (*derived_tp_init->second)(self, args, kw);
     if (status == 0 && !ensure_base_init_functions_were_called(self)) {
-        Py_DECREF(self);
-        return -1;
+        return -1; // No Py_DECREF here.
     }
     return status;
 }
