@@ -65,10 +65,16 @@ void wrap(py::module m) {
 
 namespace exercise_getinitargs_getstate_setstate {
 
-// Mechanism similar to what was established with Boost.Python:
-//   https://www.boost.org/doc/libs/1_58_0/libs/python/doc/v2/pickle.html
+// Exercise `__setstate__[non-constructor]` (see google/pywrapcc#30094), which
+// was added to support a pickle protocol as established with Boost.Python
+// (in 2002):
+//   https://www.boost.org/doc/libs/1_31_0/libs/python/doc/v2/pickle.html
 // This mechanism was also adopted for PyCLIF:
 //   https://github.com/google/clif/blob/7d388e1de7db5beeb3d7429c18a2776d8188f44f/clif/testing/python/pickle_compatibility.clif
+// The code below exercises the pickle protocol intentionally exactly as used
+// in PyCLIF, to ensure that pybind11 stays fully compatible with existing
+// client code relying on the long-established protocol. (It is impractical to
+// change all such client code.)
 
 class StoreTwoWithState {
 public:
@@ -97,7 +103,7 @@ void wrap(py::module m) {
             },
             py::arg("protocol") = -1)
         .def(
-            "@__setstate__", // See google/pywrapcc#30094 for background.
+            "__setstate__[non-constructor]", // See google/pywrapcc#30094 for background.
             [](StoreTwoWithState *self, const std::string &state) { self->SetState(state); },
             py::arg("state"));
 }

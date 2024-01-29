@@ -394,7 +394,7 @@ protected:
         // it alive.
         auto *rec = unique_rec.get();
 
-        // Note the "@__setstate__" manipulation below.
+        // Note the "__setstate__" manipulation below.
         rec->is_constructor = rec->name != nullptr
                               && (std::strcmp(rec->name, "__init__") == 0
                                   || std::strcmp(rec->name, "__setstate__") == 0);
@@ -410,9 +410,9 @@ protected:
         /* Create copies of all referenced C-style strings */
         if (rec->name == nullptr) {
             rec->name = guarded_strdup("");
-        } else if (std::strcmp(rec->name, "@__setstate__") == 0) {
+        } else if (std::strcmp(rec->name, "__setstate__[non-constructor]") == 0) {
             // See google/pywrapcc#30094 for background.
-            rec->name = guarded_strdup(rec->name + 1);
+            rec->name = guarded_strdup("__setstate__");
         } else {
             rec->name = guarded_strdup(rec->name);
         }
