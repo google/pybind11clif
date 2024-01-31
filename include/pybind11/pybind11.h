@@ -20,7 +20,6 @@
 #include "options.h"
 #include "typing.h"
 
-#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -1213,7 +1212,8 @@ PYBIND11_NAMESPACE_BEGIN(detail)
 /// Instance creation function for all pybind11 types. It only allocates space for the
 /// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
 extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
-    if (type->tp_init != tp_init_intercepted && type->tp_init != pybind11_object_init) {
+    if (type->tp_init != pybind11_object_init && type->tp_init != tp_init_intercepted
+        && derived_tp_init_registry()->count(type) == 0) {
         weakref((PyObject *) type, cpp_function([type](handle wr) {
                     auto num_erased = derived_tp_init_registry()->erase(type);
                     if (num_erased != 1) {
