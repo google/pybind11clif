@@ -7,7 +7,7 @@ import env
 from pybind11_tests import python_multiple_inheritance as m
 
 #
-# Using default py::metaclass():
+# Using default py::metaclass() (used with py::class_<> for CppBase0, CppDrvd0):
 #
 
 
@@ -35,7 +35,7 @@ class PCExplicitInitMissingSuperB0(m.CppBase0):
 
 
 #
-# Using py::metaclass((PyObject *) &PyType_Type):
+# Using py::metaclass((PyObject *) &PyType_Type) (used with py::class_<> for CppBase1, CppDrvd1):
 # COPY-PASTE block from above, replace 0 with 1:
 #
 

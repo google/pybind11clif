@@ -356,8 +356,7 @@ inline bool deregister_instance(instance *self, void *valptr, const type_info *t
     return ret;
 }
 
-using derived_tp_init_registry_type
-    = std::unordered_map<PyTypeObject *, int (*)(PyObject *, PyObject *, PyObject *)>;
+using derived_tp_init_registry_type = std::unordered_map<PyTypeObject *, initproc>;
 
 inline derived_tp_init_registry_type *derived_tp_init_registry() {
     // Intentionally leak the unordered_map:
@@ -368,7 +367,7 @@ inline derived_tp_init_registry_type *derived_tp_init_registry() {
 
 // This mechanism was originally developed here:
 // https://github.com/google/clif/commit/7cba87dd8385ab707c98e814ce742eeca877eb9e
-extern "C" inline int tp_init_intercepted(PyObject *self, PyObject *args, PyObject *kw) {
+extern "C" inline int tp_init_with_safety_checks(PyObject *self, PyObject *args, PyObject *kw) {
     assert(PyType_Check(self) == 0);
     const auto derived_tp_init = derived_tp_init_registry()->find(Py_TYPE(self));
     if (derived_tp_init == derived_tp_init_registry()->end()) {
