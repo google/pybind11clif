@@ -49,4 +49,11 @@ TEST_SUBMODULE(python_multiple_inheritance, m) {
     using namespace test_python_multiple_inheritance;
     wrap_classes<0>(m, "CppBase0", "CppDrvd0");
     wrap_classes<1>(m, "CppBase1", "CppDrvd1", py::metaclass((PyObject *) &PyType_Type));
+
+    m.attr("if_defined_PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS") =
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
+        true;
+#else
+        false;
+#endif
 }

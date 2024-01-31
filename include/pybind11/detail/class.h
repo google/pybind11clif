@@ -198,7 +198,20 @@ inline bool ensure_base_init_functions_were_called(PyObject *self) {
     return true;
 }
 
-#if defined(PYPY_VERSION)
+// See google/pywrapcc#30095 for background.
+#if !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)                                \
+    && !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
+#    if !defined(PYPY_VERSION)
+// With CPython the safety checks work for any metaclass.
+// However, with PyPy this implementation does not work at all.
+#        define PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT
+#    else
+// With this the safety checks work only for the default `py::metaclass()`.
+#        define PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS
+#    endif
+#endif
+
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
 /// metaclass `__call__` function that is used to create all pybind11 objects.
 extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, PyObject *kwargs) {
 
@@ -282,7 +295,7 @@ inline PyTypeObject *make_default_metaclass() {
     type->tp_base = type_incref(&PyType_Type);
     type->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
 
-#if defined(PYPY_VERSION)
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
     type->tp_call = pybind11_meta_call;
 #endif
 
@@ -356,6 +369,8 @@ inline bool deregister_instance(instance *self, void *valptr, const type_info *t
     return ret;
 }
 
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)
+
 using derived_tp_init_registry_type = std::unordered_map<PyTypeObject *, initproc>;
 
 inline derived_tp_init_registry_type *derived_tp_init_registry() {
@@ -365,8 +380,6 @@ inline derived_tp_init_registry_type *derived_tp_init_registry() {
     return singleton;
 }
 
-// This mechanism was originally developed here:
-// https://github.com/google/clif/commit/7cba87dd8385ab707c98e814ce742eeca877eb9e
 extern "C" inline int tp_init_with_safety_checks(PyObject *self, PyObject *args, PyObject *kw) {
     assert(PyType_Check(self) == 0);
     const auto derived_tp_init = derived_tp_init_registry()->find(Py_TYPE(self));
@@ -380,6 +393,8 @@ extern "C" inline int tp_init_with_safety_checks(PyObject *self, PyObject *args,
     }
     return status;
 }
+
+#endif // PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT
 
 /// Instance creation function for all pybind11 types. It allocates the internal instance layout
 /// for holding C++ objects and holders.  Allocation is done lazily (the first time the instance is

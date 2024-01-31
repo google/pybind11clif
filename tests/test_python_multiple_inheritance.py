@@ -3,7 +3,6 @@
 
 import pytest
 
-import env
 from pybind11_tests import python_multiple_inheritance as m
 
 #
@@ -106,13 +105,16 @@ def testPCExplicitInitWithSuper(pc_type):
     ],
 )
 def testPCExplicitInitMissingSuper(derived_type):
-    if env.PYPY and derived_type in (
-        PCExplicitInitMissingSuper1,
-        PCExplicitInitMissingSuperB1,
+    if (
+        m.if_defined_PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS
+        and derived_type
+        in (
+            PCExplicitInitMissingSuper1,
+            PCExplicitInitMissingSuperB1,
+        )
     ):
         pytest.skip(
-            "ensure_base_init_functions_were_called() does not work with PyPy"
-            " and Python `type` as metaclass"
+            "PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS is defined"
         )
     with pytest.raises(TypeError) as excinfo:
         derived_type(0)
