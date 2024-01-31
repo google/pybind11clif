@@ -402,17 +402,7 @@ inline PyObject *make_new_instance(PyTypeObject *type) {
     return self;
 }
 
-extern "C" int pybind11_object_init(PyObject *self, PyObject *, PyObject *);
-
-/// Instance creation function for all pybind11 types. It only allocates space for the
-/// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
-extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
-    if (type->tp_init != tp_init_intercepted && type->tp_init != pybind11_object_init) {
-        (*derived_tp_init_registry())[type] = type->tp_init;
-        type->tp_init = tp_init_intercepted;
-    }
-    return make_new_instance(type);
-}
+extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *);
 
 /// An `__init__` function constructs the C++ object. Users should provide at least one
 /// of these using `py::init` or directly with `.def(__init__, ...)`. Otherwise, the

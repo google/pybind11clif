@@ -119,3 +119,18 @@ def testPCExplicitInitMissingSuper(derived_type):
     assert str(excinfo.value).endswith(
         ".__init__() must be called when overriding __init__"
     )
+
+
+def test_derived_tp_init_registry_weakref_based_cleanup():
+    def nested_function(i):
+        class NestedClass(m.CppBase0):
+            def __init__(self, value):
+                super().__init__(value + 3)
+
+        d1 = NestedClass(i + 7)
+        d2 = NestedClass(i + 8)
+        return (d1.get_base_value(), d2.get_base_value())
+
+    for _ in range(100):
+        assert nested_function(0) == (10, 11)
+        assert nested_function(3) == (13, 14)

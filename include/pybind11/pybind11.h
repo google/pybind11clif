@@ -1207,6 +1207,25 @@ protected:
     }
 };
 
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+/// Instance creation function for all pybind11 types. It only allocates space for the
+/// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
+extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
+    if (type->tp_init != tp_init_intercepted && type->tp_init != pybind11_object_init) {
+        weakref((PyObject *) type, cpp_function([type](handle wr) {
+                    assert(derived_tp_init_registry()->erase(type) == 1);
+                    wr.dec_ref();
+                }))
+            .release();
+        (*derived_tp_init_registry())[type] = type->tp_init;
+        type->tp_init = tp_init_intercepted;
+    }
+    return make_new_instance(type);
+}
+
+PYBIND11_NAMESPACE_END(detail)
+
 /// Wrapper for Python extension modules
 class module_ : public object {
 public:
