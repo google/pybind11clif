@@ -20,6 +20,7 @@
 #include "options.h"
 #include "typing.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -1214,7 +1215,12 @@ PYBIND11_NAMESPACE_BEGIN(detail)
 extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
     if (type->tp_init != tp_init_intercepted && type->tp_init != pybind11_object_init) {
         weakref((PyObject *) type, cpp_function([type](handle wr) {
-                    assert(derived_tp_init_registry()->erase(type) == 1);
+                    auto num_erased = derived_tp_init_registry()->erase(type);
+                    if (num_erased != 1) {
+                        pybind11_fail("FATAL: Internal consistency check failed at " __FILE__
+                                      ":" PYBIND11_TOSTRING(__LINE__) ": num_erased="
+                                      + std::to_string(num_erased));
+                    }
                     wr.dec_ref();
                 }))
             .release();
