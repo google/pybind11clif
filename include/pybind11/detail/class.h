@@ -12,6 +12,9 @@
 #include "../attr.h"
 #include "../options.h"
 
+#include <cassert>
+#include <unordered_map>
+
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 PYBIND11_NAMESPACE_BEGIN(detail)
 
@@ -179,6 +182,36 @@ extern "C" inline PyObject *pybind11_meta_getattro(PyObject *obj, PyObject *name
     return PyType_Type.tp_getattro(obj, name);
 }
 
+// Ensure that the base __init__ function(s) were called.
+// Set TypeError and return false if not.
+// CALLER IS RESPONSIBLE for managing the self refcount appropriately.
+inline bool ensure_base_init_functions_were_called(PyObject *self) {
+    values_and_holders vhs(self);
+    for (const auto &vh : vhs) {
+        if (!vh.holder_constructed() && !vhs.is_redundant_value_and_holder(vh)) {
+            PyErr_Format(PyExc_TypeError,
+                         "%.200s.__init__() must be called when overriding __init__",
+                         get_fully_qualified_tp_name(vh.type->type).c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+// See google/pywrapcc#30095 for background.
+#if !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)                                \
+    && !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
+#    if !defined(PYPY_VERSION)
+// With CPython the safety checks work for any metaclass.
+// However, with PyPy this implementation does not work at all.
+#        define PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT
+#    else
+// With this the safety checks work only for the default `py::metaclass()`.
+#        define PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS
+#    endif
+#endif
+
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
 /// metaclass `__call__` function that is used to create all pybind11 objects.
 extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, PyObject *kwargs) {
 
@@ -188,20 +221,14 @@ extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, P
         return nullptr;
     }
 
-    // Ensure that the base __init__ function(s) were called
-    values_and_holders vhs(self);
-    for (const auto &vh : vhs) {
-        if (!vh.holder_constructed() && !vhs.is_redundant_value_and_holder(vh)) {
-            PyErr_Format(PyExc_TypeError,
-                         "%.200s.__init__() must be called when overriding __init__",
-                         get_fully_qualified_tp_name(vh.type->type).c_str());
-            Py_DECREF(self);
-            return nullptr;
-        }
+    if (!ensure_base_init_functions_were_called(self)) {
+        Py_DECREF(self);
+        return nullptr;
     }
 
     return self;
 }
+#endif
 
 /// Cleanup the type-info for a pybind11-registered type.
 extern "C" inline void pybind11_meta_dealloc(PyObject *obj) {
@@ -268,7 +295,9 @@ inline PyTypeObject *make_default_metaclass() {
     type->tp_base = type_incref(&PyType_Type);
     type->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
 
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
     type->tp_call = pybind11_meta_call;
+#endif
 
     type->tp_setattro = pybind11_meta_setattro;
     type->tp_getattro = pybind11_meta_getattro;
@@ -340,6 +369,33 @@ inline bool deregister_instance(instance *self, void *valptr, const type_info *t
     return ret;
 }
 
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)
+
+using derived_tp_init_registry_type = std::unordered_map<PyTypeObject *, initproc>;
+
+inline derived_tp_init_registry_type *derived_tp_init_registry() {
+    // Intentionally leak the unordered_map:
+    // https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
+    static auto *singleton = new derived_tp_init_registry_type();
+    return singleton;
+}
+
+extern "C" inline int tp_init_with_safety_checks(PyObject *self, PyObject *args, PyObject *kw) {
+    assert(PyType_Check(self) == 0);
+    const auto derived_tp_init = derived_tp_init_registry()->find(Py_TYPE(self));
+    if (derived_tp_init == derived_tp_init_registry()->end()) {
+        pybind11_fail("FATAL: Internal consistency check failed at " __FILE__
+                      ":" PYBIND11_TOSTRING(__LINE__));
+    }
+    int status = (*derived_tp_init->second)(self, args, kw);
+    if (status == 0 && !ensure_base_init_functions_were_called(self)) {
+        return -1; // No Py_DECREF here.
+    }
+    return status;
+}
+
+#endif // PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT
+
 /// Instance creation function for all pybind11 types. It allocates the internal instance layout
 /// for holding C++ objects and holders.  Allocation is done lazily (the first time the instance is
 /// cast to a reference or pointer), and initialization is done by an `__init__` function.
@@ -360,11 +416,7 @@ inline PyObject *make_new_instance(PyTypeObject *type) {
     return self;
 }
 
-/// Instance creation function for all pybind11 types. It only allocates space for the
-/// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
-extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
-    return make_new_instance(type);
-}
+extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *);
 
 /// An `__init__` function constructs the C++ object. Users should provide at least one
 /// of these using `py::init` or directly with `.def(__init__, ...)`. Otherwise, the
