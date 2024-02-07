@@ -1116,7 +1116,7 @@ public:
             || policy == return_value_policy::automatic_reference) {
             policy = return_value_policy::copy;
         }
-        return cast(&src, policy, parent);
+        return cast(std::addressof(src), policy, parent);
     }
 
     static handle cast(itype &&src, return_value_policy, handle parent) {

@@ -57,7 +57,9 @@ union IntFloat {
 class UnusualOpRef {
 public:
     using NonTrivialType = std::shared_ptr<int>; // Almost any non-trivial type will do.
-    NonTrivialType operator&() { return non_trivial_member; } // UNUSUAL operator.
+    // UNUSUAL operators:
+    NonTrivialType operator&() { return non_trivial_member; }
+    const NonTrivialType operator&() const { return non_trivial_member; }
 
 private:
     NonTrivialType non_trivial_member;
