@@ -9,9 +9,11 @@ from pybind11_tests import pickling as m
 
 
 def test_simple_callable_repr():
-    assert repr(m.simple_callable).startswith(
-        "<built-in method simple_callable of PyCapsule object at 0x"
-    )
+    if env.PYPY:
+        expected = "<builtin_function_or_method object at 0x"
+    else:
+        expected = "<built-in method simple_callable of PyCapsule object at 0x"
+    assert repr(m.simple_callable).startswith(expected)
 
 
 def test_Pickleable_value_repr():
