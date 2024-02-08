@@ -371,7 +371,9 @@ def test_capsule(capture):
 
 def test_capsule_with_name_repr():
     cap = m.return_capsule_with_name_and_destructor()
-    assert repr(cap).startswith('<capsule object "pointer type description" at 0x')
+    c = "" if env.PYPY else "<"
+    expected = f'{c}capsule object "pointer type description" at 0x'
+    assert repr(cap).startswith(expected)
 
 
 def test_accessors():

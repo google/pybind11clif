@@ -15,9 +15,11 @@ def test_simple_callable_repr():
 
 
 def test_Pickleable_value_repr():
-    assert repr(m.Pickleable("").value).startswith(
-        "<bound method PyCapsule.value of <pybind11_tests.pickling.Pickleable object at 0x"
+    cap = "" if env.PYPY else "PyCapsule."
+    expected = (
+        f"<bound method {cap}value of <pybind11_tests.pickling.Pickleable object at 0x"
     )
+    assert repr(m.Pickleable("").value).startswith(expected)
 
 
 def test_pickle_simple_callable():
