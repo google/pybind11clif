@@ -8,6 +8,18 @@ import env
 from pybind11_tests import pickling as m
 
 
+def test_simple_callable_repr():
+    assert repr(m.simple_callable).startswith(
+        "<built-in method simple_callable of PyCapsule object at 0x"
+    )
+
+
+def test_Pickleable_value_repr():
+    assert repr(m.Pickleable("").value).startswith(
+        "<bound method PyCapsule.value of <pybind11_tests.pickling.Pickleable object at 0x"
+    )
+
+
 def test_pickle_simple_callable():
     assert m.simple_callable() == 20220426
     if env.PYPY:
