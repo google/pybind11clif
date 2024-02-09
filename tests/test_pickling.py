@@ -6,19 +6,17 @@ import pytest
 import env
 from pybind11_tests import pickling as m
 
-_orig_simple_callable = m.simple_callable
+
+def test_assumptions():
+    assert pickle.HIGHEST_PROTOCOL >= 0
 
 
-def _wrapped_simple_callable(*args, **kwargs):
-    return _orig_simple_callable(*args, **kwargs)
-
-
-m.simple_callable = _wrapped_simple_callable
-
-
-def test_pickle_simple_callable():
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+def test_pickle_simple_callable(protocol):
     assert m.simple_callable() == 20220426
-    serialized = pickle.dumps(m.simple_callable)
+    serialized = pickle.dumps(m.simple_callable, protocol=protocol)
+    assert b"pybind11_tests.pickling" in serialized
+    assert b"simple_callable" in serialized
     deserialized = pickle.loads(serialized)
     assert deserialized() == 20220426
 

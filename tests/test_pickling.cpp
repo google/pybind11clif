@@ -111,7 +111,7 @@ void wrap(py::module m) {
 } // namespace exercise_getinitargs_getstate_setstate
 
 TEST_SUBMODULE(pickling, m) {
-    m.def("simple_callable", []() { return 20220426; });
+    m.def_as_native("simple_callable", []() { return 20220426; });
 
     // test_roundtrip
     class Pickleable {

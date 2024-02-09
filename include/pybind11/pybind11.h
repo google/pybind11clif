@@ -1232,6 +1232,21 @@ extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, 
     return make_new_instance(type);
 }
 
+inline object wrap_cpp_function_in_native_function(const char *name, object cpp_func) {
+    std::string py_code("def ");
+    py_code += name;
+    py_code += "(*args, **kwargs):\n";
+    py_code += "    return _cpp_func(*args, **kwargs)\n";
+    dict globals;
+    globals["_cpp_func"] = cpp_func;
+    PyObject *run_result = PyRun_String(py_code.c_str(), Py_file_input, globals.ptr(), nullptr);
+    if (run_result == nullptr) {
+        throw error_already_set();
+    }
+    Py_DECREF(run_result);
+    return globals[name];
+}
+
 PYBIND11_NAMESPACE_END(detail)
 
 /// Wrapper for Python extension modules
@@ -1261,6 +1276,30 @@ public:
         // overwriting (and has already checked internally that it isn't overwriting
         // non-functions).
         add_object(name_, func, true /* overwrite */);
+        return *this;
+    }
+
+    template <typename Func, typename... Extra>
+    module_ &def_as_native(const char *name_, Func &&f, const Extra &...extra) {
+        if (!hasattr(*this, "_pybind11_cpp_function_registry")) {
+            add_object("_pybind11_cpp_function_registry",
+                       module_::import("weakref").attr("WeakValueDictionary")());
+        }
+        auto reg = getattr(*this, "_pybind11_cpp_function_registry");
+        if (reg.contains(name_)) {
+            add_object(name_, reg[name_], true /* overwrite */);
+        }
+        cpp_function func(std::forward<Func>(f),
+                          name(name_),
+                          scope(*this),
+                          sibling(getattr(*this, name_, none())),
+                          extra...);
+        reg[name_] = func;
+        object wrapped_func = detail::wrap_cpp_function_in_native_function(name_, func);
+        if (hasattr(func, "__doc__")) {
+            wrapped_func.attr("__doc__") = getattr(func, "__doc__");
+        }
+        add_object(name_, wrapped_func, true /* overwrite */);
         return *this;
     }
 
