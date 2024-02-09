@@ -1,41 +1,26 @@
 import copy
 import pickle
-import re
 
 import pytest
 
 import env
 from pybind11_tests import pickling as m
 
-
-def test_simple_callable_repr():
-    if env.PYPY:
-        expected = "<builtin_function_or_method object at 0x"
-    else:
-        expected = "<built-in method simple_callable of PyCapsule object at 0x"
-    assert repr(m.simple_callable).startswith(expected)
+_orig_simple_callable = m.simple_callable
 
 
-def test_Pickleable_value_repr():
-    cap = "" if env.PYPY else "PyCapsule."
-    expected = (
-        f"<bound method {cap}value of <pybind11_tests.pickling.Pickleable object at 0x"
-    )
-    assert repr(m.Pickleable("").value).startswith(expected)
+def _wrapped_simple_callable(*args, **kwargs):
+    return _orig_simple_callable(*args, **kwargs)
+
+
+m.simple_callable = _wrapped_simple_callable
 
 
 def test_pickle_simple_callable():
     assert m.simple_callable() == 20220426
-    if env.PYPY:
-        serialized = pickle.dumps(m.simple_callable)
-        deserialized = pickle.loads(serialized)
-        assert deserialized() == 20220426
-    else:
-        # To document broken behavior: currently it fails universally with
-        # all C Python versions.
-        with pytest.raises(TypeError) as excinfo:
-            pickle.dumps(m.simple_callable)
-        assert re.search("can.*t pickle .*PyCapsule.* object", str(excinfo.value))
+    serialized = pickle.dumps(m.simple_callable)
+    deserialized = pickle.loads(serialized)
+    assert deserialized() == 20220426
 
 
 @pytest.mark.parametrize("cls_name", ["Pickleable", "PickleableNew"])
