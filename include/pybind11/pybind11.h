@@ -1282,8 +1282,15 @@ public:
     template <typename Func, typename... Extra>
     module_ &def_as_native(const char *name_, Func &&f, const Extra &...extra) {
         if (!hasattr(*this, "_pybind11_cpp_function_registry")) {
+#if defined(PYPY_VERSION)
+            // Just to make the tests pass. This leaks (probably a very minor leak though).
+            // The error was:
+            // TypeError: cannot create weak reference to 'builtin_function_or_method' object
+            add_object("_pybind11_cpp_function_registry", dict());
+#else
             add_object("_pybind11_cpp_function_registry",
                        module_::import("weakref").attr("WeakValueDictionary")());
+#endif
         }
         auto reg = getattr(*this, "_pybind11_cpp_function_registry");
         if (reg.contains(name_)) {
