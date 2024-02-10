@@ -121,6 +121,78 @@ inline bool apply_exception_translators(std::forward_list<ExceptionTranslator> &
 #    define PYBIND11_COMPAT_STRDUP strdup
 #endif
 
+struct function_record_PyObject {
+    PyObject_HEAD
+    function_record *cpp_func_rec;
+};
+
+namespace function_record_PyTypeObject_methods {
+
+PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject *tp_alloc_impl(PyTypeObject *type, Py_ssize_t nitems);
+int tp_init_impl(PyObject *self, PyObject *args, PyObject *kwds);
+void tp_dealloc_impl(PyObject *self);
+void tp_free_impl(void *self);
+
+} // namespace function_record_PyTypeObject_methods
+
+PYBIND11_WARNING_PUSH
+PYBIND11_WARNING_DISABLE_GCC("-Wmissing-field-initializers")
+static PyTypeObject function_record_PyTypeObject = {
+    .ob_base = PyVarObject_HEAD_INIT(nullptr, 0).tp_name = "pybind11_detail_function_record",
+    .tp_basicsize = sizeof(function_record_PyObject),
+    .tp_itemsize = 0,
+    .tp_dealloc = function_record_PyTypeObject_methods::tp_dealloc_impl,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = PyDoc_STR("pybind11::detail::function_record"),
+    .tp_init = function_record_PyTypeObject_methods::tp_init_impl,
+    .tp_alloc = function_record_PyTypeObject_methods::tp_alloc_impl,
+    .tp_new = function_record_PyTypeObject_methods::tp_new_impl,
+    .tp_free = function_record_PyTypeObject_methods::tp_free_impl,
+};
+PYBIND11_WARNING_POP
+
+inline bool is_function_record_PyObject(PyObject *obj) {
+    if (PyType_Check(obj) != 0) {
+        return false;
+    }
+    PyTypeObject *obj_type = Py_TYPE(obj);
+    if (obj_type == &function_record_PyTypeObject) {
+        return true;
+    }
+    // TODO: MOVE function_record_PyTypeObject to internals.
+    if (strcmp(obj_type->tp_name, function_record_PyTypeObject.tp_name) == 0) {
+        return true;
+    }
+    return false;
+}
+
+inline function_record *function_record_ptr_from_PyObject(PyObject *obj) {
+    if (is_function_record_PyObject(obj)) {
+        return ((detail::function_record_PyObject *) obj)->cpp_func_rec;
+    }
+    return nullptr;
+}
+
+inline object function_record_PyObject_New() {
+    {
+        static std::once_flag pytype_ready_called_flag;
+        gil_scoped_release gil_rel;
+        std::call_once(pytype_ready_called_flag, [] {
+            gil_scoped_acquire gil_acq;
+            if (PyType_Ready(&function_record_PyTypeObject) < 0) {
+                throw error_already_set();
+            }
+        });
+    }
+    auto *py_func_rec = PyObject_New(function_record_PyObject, &function_record_PyTypeObject);
+    if (py_func_rec == nullptr) {
+        throw error_already_set();
+    }
+    py_func_rec->cpp_func_rec = nullptr; // For clarity/purity. Redundant in practice.
+    return reinterpret_steal<object>((PyObject *) py_func_rec);
+}
+
 PYBIND11_NAMESPACE_END(detail)
 
 /// Wraps an arbitrary C++ function/method/lambda function/.. into a callable Python object
@@ -528,20 +600,11 @@ protected:
         if (rec->sibling) {
             if (PyCFunction_Check(rec->sibling.ptr())) {
                 auto *self = PyCFunction_GET_SELF(rec->sibling.ptr());
-                if (!isinstance<capsule>(self)) {
+                chain = detail::function_record_ptr_from_PyObject(self);
+                if (chain && !chain->scope.is(rec->scope)) {
+                    /* Never append a method to an overload chain of a parent class;
+                       instead, hide the parent's overloads in this case */
                     chain = nullptr;
-                } else {
-                    auto rec_capsule = reinterpret_borrow<capsule>(self);
-                    if (detail::is_function_record_capsule(rec_capsule)) {
-                        chain = rec_capsule.get_pointer<detail::function_record>();
-                        /* Never append a method to an overload chain of a parent class;
-                           instead, hide the parent's overloads in this case */
-                        if (!chain->scope.is(rec->scope)) {
-                            chain = nullptr;
-                        }
-                    } else {
-                        chain = nullptr;
-                    }
                 }
             }
             // Don't trigger for things like the default __init__, which are wrapper_descriptors
@@ -561,9 +624,9 @@ protected:
                 = reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(dispatcher));
             rec->def->ml_flags = METH_VARARGS | METH_KEYWORDS;
 
-            capsule rec_capsule(unique_rec.release(),
-                                detail::get_function_record_capsule_name(),
-                                [](void *ptr) { destruct((detail::function_record *) ptr); });
+            object py_func_rec = detail::function_record_PyObject_New();
+            ((detail::function_record_PyObject *) py_func_rec.ptr())->cpp_func_rec
+                = unique_rec.release();
             guarded_strdup.release();
 
             object scope_module;
@@ -575,7 +638,7 @@ protected:
                 }
             }
 
-            m_ptr = PyCFunction_NewEx(rec->def, rec_capsule.ptr(), scope_module.ptr());
+            m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");
             }
@@ -604,9 +667,9 @@ protected:
                 // chain.
                 chain_start = rec;
                 rec->next = chain;
-                auto rec_capsule
-                    = reinterpret_borrow<capsule>(((PyCFunctionObject *) m_ptr)->m_self);
-                rec_capsule.set_pointer(unique_rec.release());
+                auto py_func_rec
+                    = (detail::function_record_PyObject *) PyCFunction_GET_SELF(m_ptr);
+                py_func_rec->cpp_func_rec = unique_rec.release();
                 guarded_strdup.release();
             } else {
                 // Or end of chain (normal behavior)
@@ -680,6 +743,8 @@ protected:
         }
     }
 
+    friend void detail::function_record_PyTypeObject_methods::tp_dealloc_impl(PyObject *);
+
     /// When a cpp_function is GCed, release any memory allocated by pybind11
     static void destruct(detail::function_record *rec, bool free_strings = true) {
 // If on Python 3.9, check the interpreter "MICRO" (patch) version.
@@ -729,13 +794,11 @@ protected:
     /// Main dispatch logic for calls to functions bound using pybind11
     static PyObject *dispatcher(PyObject *self, PyObject *args_in, PyObject *kwargs_in) {
         using namespace detail;
-        assert(isinstance<capsule>(self));
+        const function_record *overloads = function_record_ptr_from_PyObject(self);
+        assert(overloads != nullptr);
 
         /* Iterator over the list of potentially admissible overloads */
-        const function_record *overloads = reinterpret_cast<function_record *>(
-                                  PyCapsule_GetPointer(self, get_function_record_capsule_name())),
-                              *current_overload = overloads;
-        assert(overloads != nullptr);
+        const function_record *current_overload = overloads;
 
         /* Need to know how many arguments + keyword arguments there are to pick the right
            overload */
@@ -1208,6 +1271,42 @@ protected:
 };
 
 PYBIND11_NAMESPACE_BEGIN(detail)
+
+namespace function_record_PyTypeObject_methods {
+
+inline PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    // Create a new instance using the type's tp_alloc slot.
+    if (type)
+        pybind11_fail("INTENTIONAL BREAKAGE: tp_new_impl");
+    return PyType_GenericNew(type, args, kwds);
+}
+
+inline PyObject *tp_alloc_impl(PyTypeObject *type, Py_ssize_t nitems) {
+    // Use Python's default memory allocation mechanism to allocate a new instance
+    // and initialize all its contents to NULL.
+    if (type)
+        pybind11_fail("INTENTIONAL BREAKAGE: tp_alloc_impl");
+    return PyType_GenericAlloc(type, nitems);
+}
+
+inline int tp_init_impl(PyObject *self, PyObject *, PyObject *) {
+    if (self)
+        pybind11_fail("INTENTIONAL BREAKAGE: tp_init_impl");
+    return -1;
+}
+
+inline void tp_dealloc_impl(PyObject *self) {
+    auto py_func_rec = (function_record_PyObject *) self;
+    cpp_function::destruct(py_func_rec->cpp_func_rec);
+    py_func_rec->cpp_func_rec = nullptr;
+}
+
+inline void tp_free_impl(void *self) {
+    if (self)
+        pybind11_fail("INTENTIONAL BREAKAGE: tp_free_impl");
+}
+
+} // namespace function_record_PyTypeObject_methods
 
 /// Instance creation function for all pybind11 types. It only allocates space for the
 /// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
@@ -2334,14 +2433,7 @@ private:
         if (!func_self) {
             throw error_already_set();
         }
-        if (!isinstance<capsule>(func_self)) {
-            return nullptr;
-        }
-        auto cap = reinterpret_borrow<capsule>(func_self);
-        if (!detail::is_function_record_capsule(cap)) {
-            return nullptr;
-        }
-        return cap.get_pointer<detail::function_record>();
+        return detail::function_record_ptr_from_PyObject(func_self.ptr());
     }
 };
 
