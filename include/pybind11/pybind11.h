@@ -151,7 +151,9 @@ PYBIND11_WARNING_POP
 // MSVC rejects them unless /std:c++20 is used (error code C7555).
 PYBIND11_WARNING_PUSH
 PYBIND11_WARNING_DISABLE_CLANG("-Wmissing-field-initializers")
+#if defined(__GNUC__) && __GNUC__ >= 8
 PYBIND11_WARNING_DISABLE_GCC("-Wmissing-field-initializers")
+#endif
 static PyTypeObject function_record_PyTypeObject = {
     PyVarObject_HEAD_INIT(nullptr, 0)
     /* const char *tp_name */ "pybind11_detail_function_"
