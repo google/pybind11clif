@@ -136,21 +136,60 @@ void tp_free_impl(void *self);
 
 } // namespace function_record_PyTypeObject_methods
 
-PYBIND11_WARNING_PUSH
-PYBIND11_WARNING_DISABLE_GCC("-Wmissing-field-initializers")
+// Designated initializers are a C++20 feature:
+// https://en.cppreference.com/w/cpp/language/aggregate_initialization#Designated_initializers
+// MSVC rejects them unless /std:c++20 is used (error code C7555).
 static PyTypeObject function_record_PyTypeObject = {
-    .ob_base = PyVarObject_HEAD_INIT(nullptr, 0).tp_name = "pybind11_detail_function_record",
-    .tp_basicsize = sizeof(function_record_PyObject),
-    .tp_itemsize = 0,
-    .tp_dealloc = function_record_PyTypeObject_methods::tp_dealloc_impl,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = PyDoc_STR("pybind11::detail::function_record"),
-    .tp_init = function_record_PyTypeObject_methods::tp_init_impl,
-    .tp_alloc = function_record_PyTypeObject_methods::tp_alloc_impl,
-    .tp_new = function_record_PyTypeObject_methods::tp_new_impl,
-    .tp_free = function_record_PyTypeObject_methods::tp_free_impl,
+    PyVarObject_HEAD_INIT(nullptr, 0)
+    /* const char *tp_name */ "pybind11_detail_function_record",
+    /* Py_ssize_t tp_basicsize */ sizeof(function_record_PyObject),
+    /* Py_ssize_t tp_itemsize */ 0,
+    /* destructor tp_dealloc */ function_record_PyTypeObject_methods::tp_dealloc_impl,
+    /* Py_ssize_t tp_vectorcall_offset */ 0,
+    /* getattrfunc tp_getattr */ nullptr,
+    /* setattrfunc tp_setattr */ nullptr,
+    /* PyAsyncMethods *tp_as_async */ nullptr,
+    /* reprfunc tp_repr */ nullptr,
+    /* PyNumberMethods *tp_as_number */ nullptr,
+    /* PySequenceMethods *tp_as_sequence */ nullptr,
+    /* PyMappingMethods *tp_as_mapping */ nullptr,
+    /* hashfunc tp_hash */ nullptr,
+    /* ternaryfunc tp_call */ nullptr,
+    /* reprfunc tp_str */ nullptr,
+    /* getattrofunc tp_getattro */ nullptr,
+    /* setattrofunc tp_setattro */ nullptr,
+    /* PyBufferProcs *tp_as_buffer */ nullptr,
+    /* unsigned long tp_flags */ Py_TPFLAGS_DEFAULT,
+    /* const char *tp_doc */ "pybind11::detail::function_record",
+    /* traverseproc tp_traverse */ nullptr,
+    /* inquiry tp_clear */ nullptr,
+    /* richcmpfunc tp_richcompare */ nullptr,
+    /* Py_ssize_t tp_weaklistoffset */ 0,
+    /* getiterfunc tp_iter */ nullptr,
+    /* iternextfunc tp_iternext */ nullptr,
+    /* struct PyMethodDef *tp_methods */ nullptr,
+    /* struct PyMemberDef *tp_members */ nullptr,
+    /* struct PyGetSetDef *tp_getset */ nullptr,
+    /* struct _typeobject *tp_base */ nullptr,
+    /* PyObject *tp_dict */ nullptr,
+    /* descrgetfunc tp_descr_get */ nullptr,
+    /* descrsetfunc tp_descr_set */ nullptr,
+    /* Py_ssize_t tp_dictoffset */ 0,
+    /* initproc tp_init */ function_record_PyTypeObject_methods::tp_init_impl,
+    /* allocfunc tp_alloc */ function_record_PyTypeObject_methods::tp_alloc_impl,
+    /* newfunc tp_new */ function_record_PyTypeObject_methods::tp_new_impl,
+    /* freefunc tp_free */ function_record_PyTypeObject_methods::tp_free_impl,
+    /* inquiry tp_is_gc */ nullptr,
+    /* PyObject *tp_bases */ nullptr,
+    /* PyObject *tp_mro */ nullptr,
+    /* PyObject *tp_cache */ nullptr,
+    /* PyObject *tp_subclasses */ nullptr,
+    /* PyObject *tp_weaklist */ nullptr,
+    /* destructor tp_del */ nullptr,
+    /* unsigned int tp_version_tag */ 0,
+    /* destructor tp_finalize */ nullptr,
+    /* vectorcallfunc tp_vectorcall */ nullptr,
 };
-PYBIND11_WARNING_POP
 
 inline bool is_function_record_PyObject(PyObject *obj) {
     if (PyType_Check(obj) != 0) {
