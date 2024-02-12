@@ -385,10 +385,11 @@ PYBIND11_NOINLINE internals &get_internals() {
         internals_ptr->static_property_type = make_static_property_type();
         internals_ptr->default_metaclass = make_default_metaclass();
         internals_ptr->instance_base = make_object_base_type(internals_ptr->default_metaclass);
-
-        // This is not directly related to the `internals`, but also needs to be called only once.
-        function_record_PyTypeObject_PyType_Ready();
     }
+
+    // This is not directly related to the `internals`, but also needs to be called only once.
+    function_record_PyTypeObject_PyType_Ready();
+
     return **internals_pp;
 }
 
