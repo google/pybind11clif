@@ -1,10 +1,29 @@
 import copy
+import importlib
 import pickle
 
 import pytest
 
 import env
 from pybind11_tests import pickling as m
+
+
+class _pybind11_detail_function_record_import_helper:
+    def __init__(self, fully_qualified_module_name, function_name):
+        self.fully_qualified_module_name = fully_qualified_module_name
+        self.function_name = function_name
+
+    def __getattr__(self, name):
+        assert name == self.function_name
+        return getattr(
+            importlib.import_module(self.fully_qualified_module_name),
+            self.function_name,
+        )
+
+
+importlib._pybind11_detail_function_record_import_helper = (
+    _pybind11_detail_function_record_import_helper
+)
 
 
 def test_assumptions():

@@ -135,6 +135,15 @@ int tp_init_impl(PyObject *self, PyObject *args, PyObject *kwds);
 void tp_dealloc_impl(PyObject *self);
 void tp_free_impl(void *self);
 
+static PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *);
+
+PYBIND11_WARNING_PUSH
+PYBIND11_WARNING_DISABLE_GCC("-Wcast-function-type")
+static PyMethodDef MethodsStaticAlloc[]
+    = {{"__reduce_ex__", (PyCFunction) reduce_ex_impl, METH_VARARGS | METH_KEYWORDS, nullptr},
+       {nullptr, nullptr, 0, nullptr}};
+PYBIND11_WARNING_POP
+
 } // namespace function_record_PyTypeObject_methods
 
 // Designated initializers are a C++20 feature:
@@ -173,7 +182,7 @@ static PyTypeObject function_record_PyTypeObject = {
     /* Py_ssize_t tp_weaklistoffset */ 0,
     /* getiterfunc tp_iter */ nullptr,
     /* iternextfunc tp_iternext */ nullptr,
-    /* struct PyMethodDef *tp_methods */ nullptr,
+    /* struct PyMethodDef *tp_methods */ function_record_PyTypeObject_methods::MethodsStaticAlloc,
     /* struct PyMemberDef *tp_members */ nullptr,
     /* struct PyGetSetDef *tp_getset */ nullptr,
     /* struct _typeobject *tp_base */ nullptr,
@@ -672,6 +681,7 @@ protected:
                 = unique_rec.release();
             guarded_strdup.release();
 
+            // TODO 30099: Move to helper function.
             object scope_module;
             if (rec->scope) {
                 if (hasattr(rec->scope, "__module__")) {
@@ -1378,21 +1388,6 @@ extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, 
     return make_new_instance(type);
 }
 
-inline object wrap_cpp_function_in_native_function(const char *name, object cpp_func) {
-    std::string py_code("def ");
-    py_code += name;
-    py_code += "(*args, **kwargs):\n";
-    py_code += "    return _cpp_func(*args, **kwargs)\n";
-    dict globals;
-    globals["_cpp_func"] = cpp_func;
-    PyObject *run_result = PyRun_String(py_code.c_str(), Py_file_input, globals.ptr(), nullptr);
-    if (run_result == nullptr) {
-        throw error_already_set();
-    }
-    Py_DECREF(run_result);
-    return globals[name];
-}
-
 PYBIND11_NAMESPACE_END(detail)
 
 /// Wrapper for Python extension modules
@@ -1422,37 +1417,6 @@ public:
         // overwriting (and has already checked internally that it isn't overwriting
         // non-functions).
         add_object(name_, func, true /* overwrite */);
-        return *this;
-    }
-
-    template <typename Func, typename... Extra>
-    module_ &def_as_native(const char *name_, Func &&f, const Extra &...extra) {
-        if (!hasattr(*this, "_pybind11_cpp_function_registry")) {
-#if defined(PYPY_VERSION)
-            // Just to make the tests pass. This leaks (probably a very minor leak though).
-            // The error was:
-            // TypeError: cannot create weak reference to 'builtin_function_or_method' object
-            add_object("_pybind11_cpp_function_registry", dict());
-#else
-            add_object("_pybind11_cpp_function_registry",
-                       module_::import("weakref").attr("WeakValueDictionary")());
-#endif
-        }
-        auto reg = getattr(*this, "_pybind11_cpp_function_registry");
-        if (reg.contains(name_)) {
-            add_object(name_, reg[name_], true /* overwrite */);
-        }
-        cpp_function func(std::forward<Func>(f),
-                          name(name_),
-                          scope(*this),
-                          sibling(getattr(*this, name_, none())),
-                          extra...);
-        reg[name_] = func;
-        object wrapped_func = detail::wrap_cpp_function_in_native_function(name_, func);
-        if (hasattr(func, "__doc__")) {
-            wrapped_func.attr("__doc__") = getattr(func, "__doc__");
-        }
-        add_object(name_, wrapped_func, true /* overwrite */);
         return *this;
     }
 
@@ -1557,6 +1521,42 @@ public:
         return *this;
     }
 };
+
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+namespace function_record_PyTypeObject_methods {
+
+inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
+    // Deliberately ignoring the arguments for simplicity (expected is `protocol: int`).
+    const function_record *rec = function_record_ptr_from_PyObject(self);
+    if (rec == nullptr) {
+        pybind11_fail(
+            "FATAL: function_record_PyTypeObject reduce_ex_impl(): cannot obtain cpp_func_rec.");
+    }
+    if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope) {
+        // TODO 30099: Move to helper function.
+        object scope_module;
+        if (hasattr(rec->scope, "__module__")) {
+            scope_module = rec->scope.attr("__module__");
+        } else if (hasattr(rec->scope, "__name__")) {
+            scope_module = rec->scope.attr("__name__");
+        }
+
+        if (scope_module) {
+            return make_tuple(module_::import("importlib")
+                                  .attr("_pybind11_detail_function_record_import_helper"),
+                              make_tuple(scope_module, rec->name))
+                .release()
+                .ptr();
+        }
+    }
+    set_error(PyExc_RuntimeError, repr(self) + str(" is not pickleable."));
+    return nullptr;
+}
+
+} // namespace function_record_PyTypeObject_methods
+
+PYBIND11_NAMESPACE_END(detail)
 
 // When inside a namespace (or anywhere as long as it's not the first item on a line),
 // C++20 allows "module" to be used. This is provided for backward compatibility, and for
