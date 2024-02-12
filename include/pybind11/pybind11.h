@@ -20,9 +20,11 @@
 #include "options.h"
 #include "typing.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <string>
 #include <utility>
@@ -214,11 +216,12 @@ inline function_record *function_record_ptr_from_PyObject(PyObject *obj) {
     return nullptr;
 }
 
+static std::once_flag function_record_PyTypeObject_pytype_ready_call_once_flag;
+
 inline object function_record_PyObject_New() {
     {
-        static std::once_flag pytype_ready_called_flag;
         gil_scoped_release gil_rel;
-        std::call_once(pytype_ready_called_flag, [] {
+        std::call_once(function_record_PyTypeObject_pytype_ready_call_once_flag, [] {
             gil_scoped_acquire gil_acq;
             if (PyType_Ready(&function_record_PyTypeObject) < 0) {
                 throw error_already_set();
