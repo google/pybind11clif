@@ -141,6 +141,9 @@ void tp_free_impl(void *self);
 // Designated initializers are a C++20 feature:
 // https://en.cppreference.com/w/cpp/language/aggregate_initialization#Designated_initializers
 // MSVC rejects them unless /std:c++20 is used (error code C7555).
+PYBIND11_WARNING_PUSH
+PYBIND11_WARNING_DISABLE_CLANG("-Wmissing-field-initializers")
+PYBIND11_WARNING_DISABLE_GCC("-Wmissing-field-initializers")
 static PyTypeObject function_record_PyTypeObject = {
     PyVarObject_HEAD_INIT(nullptr, 0)
     /* const char *tp_name */ "pybind11_detail_function_"
@@ -196,6 +199,7 @@ static PyTypeObject function_record_PyTypeObject = {
     /* vectorcallfunc tp_vectorcall */ nullptr,
 #endif
 };
+PYBIND11_WARNING_POP
 
 inline bool is_function_record_PyObject(PyObject *obj) {
     if (PyType_Check(obj) != 0) {
@@ -221,7 +225,8 @@ inline function_record *function_record_ptr_from_PyObject(PyObject *obj) {
 static std::once_flag function_record_PyTypeObject_pytype_ready_call_once_flag;
 
 inline object function_record_PyObject_New() {
-    {
+    static bool first_call = true;
+    if (first_call) {
         gil_scoped_release gil_rel;
         std::call_once(function_record_PyTypeObject_pytype_ready_call_once_flag, [] {
             gil_scoped_acquire gil_acq;
@@ -229,6 +234,7 @@ inline object function_record_PyObject_New() {
                 throw error_already_set();
             }
         });
+        first_call = false;
     }
     auto *py_func_rec = PyObject_New(function_record_PyObject, &function_record_PyTypeObject);
     if (py_func_rec == nullptr) {
