@@ -712,7 +712,7 @@ protected:
                 // chain.
                 chain_start = rec;
                 rec->next = chain;
-                auto py_func_rec
+                auto *py_func_rec
                     = (detail::function_record_PyObject *) PyCFunction_GET_SELF(m_ptr);
                 py_func_rec->cpp_func_rec = unique_rec.release();
                 guarded_strdup.release();
@@ -1321,34 +1321,38 @@ namespace function_record_PyTypeObject_methods {
 
 inline PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     // Create a new instance using the type's tp_alloc slot.
-    if (type)
+    if (type) {
         pybind11_fail("INTENTIONAL BREAKAGE: tp_new_impl");
+    }
     return PyType_GenericNew(type, args, kwds);
 }
 
 inline PyObject *tp_alloc_impl(PyTypeObject *type, Py_ssize_t nitems) {
     // Use Python's default memory allocation mechanism to allocate a new instance
     // and initialize all its contents to NULL.
-    if (type)
+    if (type) {
         pybind11_fail("INTENTIONAL BREAKAGE: tp_alloc_impl");
+    }
     return PyType_GenericAlloc(type, nitems);
 }
 
 inline int tp_init_impl(PyObject *self, PyObject *, PyObject *) {
-    if (self)
+    if (self) {
         pybind11_fail("INTENTIONAL BREAKAGE: tp_init_impl");
+    }
     return -1;
 }
 
 inline void tp_dealloc_impl(PyObject *self) {
-    auto py_func_rec = (function_record_PyObject *) self;
+    auto *py_func_rec = (function_record_PyObject *) self;
     cpp_function::destruct(py_func_rec->cpp_func_rec);
     py_func_rec->cpp_func_rec = nullptr;
 }
 
 inline void tp_free_impl(void *self) {
-    if (self)
+    if (self) {
         pybind11_fail("INTENTIONAL BREAKAGE: tp_free_impl");
+    }
 }
 
 } // namespace function_record_PyTypeObject_methods
