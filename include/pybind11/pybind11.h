@@ -24,7 +24,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <mutex>
 #include <new>
 #include <string>
 #include <utility>
@@ -201,6 +200,12 @@ static PyTypeObject function_record_PyTypeObject = {
 };
 PYBIND11_WARNING_POP
 
+inline void function_record_PyTypeObject_PyType_Ready() {
+    if (PyType_Ready(&function_record_PyTypeObject) < 0) {
+        throw error_already_set();
+    }
+}
+
 inline bool is_function_record_PyObject(PyObject *obj) {
     if (PyType_Check(obj) != 0) {
         return false;
@@ -222,20 +227,7 @@ inline function_record *function_record_ptr_from_PyObject(PyObject *obj) {
     return nullptr;
 }
 
-static std::once_flag function_record_PyTypeObject_pytype_ready_call_once_flag;
-
 inline object function_record_PyObject_New() {
-    static bool first_call = true;
-    if (first_call) {
-        gil_scoped_release gil_rel;
-        std::call_once(function_record_PyTypeObject_pytype_ready_call_once_flag, [] {
-            gil_scoped_acquire gil_acq;
-            if (PyType_Ready(&function_record_PyTypeObject) < 0) {
-                throw error_already_set();
-            }
-        });
-        first_call = false;
-    }
     auto *py_func_rec = PyObject_New(function_record_PyObject, &function_record_PyTypeObject);
     if (py_func_rec == nullptr) {
         throw error_already_set();
