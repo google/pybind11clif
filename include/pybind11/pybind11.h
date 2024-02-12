@@ -141,7 +141,9 @@ void tp_free_impl(void *self);
 // MSVC rejects them unless /std:c++20 is used (error code C7555).
 static PyTypeObject function_record_PyTypeObject = {
     PyVarObject_HEAD_INIT(nullptr, 0)
-    /* const char *tp_name */ "pybind11_detail_function_record",
+    /* const char *tp_name */ "pybind11_detail_function_"
+                              "record_" PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID
+                              "_" PYBIND11_PLATFORM_ABI_ID_V4,
     /* Py_ssize_t tp_basicsize */ sizeof(function_record_PyObject),
     /* Py_ssize_t tp_itemsize */ 0,
     /* destructor tp_dealloc */ function_record_PyTypeObject_methods::tp_dealloc_impl,
@@ -160,7 +162,7 @@ static PyTypeObject function_record_PyTypeObject = {
     /* setattrofunc tp_setattro */ nullptr,
     /* PyBufferProcs *tp_as_buffer */ nullptr,
     /* unsigned long tp_flags */ Py_TPFLAGS_DEFAULT,
-    /* const char *tp_doc */ "pybind11::detail::function_record",
+    /* const char *tp_doc */ nullptr,
     /* traverseproc tp_traverse */ nullptr,
     /* inquiry tp_clear */ nullptr,
     /* richcmpfunc tp_richcompare */ nullptr,
@@ -199,7 +201,6 @@ inline bool is_function_record_PyObject(PyObject *obj) {
     if (obj_type == &function_record_PyTypeObject) {
         return true;
     }
-    // TODO: MOVE function_record_PyTypeObject to internals.
     if (strcmp(obj_type->tp_name, function_record_PyTypeObject.tp_name) == 0) {
         return true;
     }
