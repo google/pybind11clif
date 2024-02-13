@@ -1208,7 +1208,7 @@ protected:
 
 PYBIND11_NAMESPACE_BEGIN(detail)
 
-namespace function_record_PyTypeObject_methods {
+PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 
 // This implementation needs the definition of `class cpp_function`.
 inline void tp_dealloc_impl(PyObject *self) {
@@ -1217,7 +1217,7 @@ inline void tp_dealloc_impl(PyObject *self) {
     py_func_rec->cpp_func_rec = nullptr;
 }
 
-} // namespace function_record_PyTypeObject_methods
+PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 
 /// Instance creation function for all pybind11 types. It only allocates space for the
 /// C++ object, but doesn't call the constructor -- an `__init__` function must do that.

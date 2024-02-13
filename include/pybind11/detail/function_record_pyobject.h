@@ -16,7 +16,7 @@ struct function_record_PyObject {
     function_record *cpp_func_rec;
 };
 
-namespace function_record_PyTypeObject_methods {
+PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 
 PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds);
 PyObject *tp_alloc_impl(PyTypeObject *type, Py_ssize_t nitems);
@@ -35,7 +35,7 @@ static PyMethodDef tp_methods_impl[]
        {nullptr, nullptr, 0, nullptr}};
 PYBIND11_WARNING_POP
 
-} // namespace function_record_PyTypeObject_methods
+PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 
 // Designated initializers are a C++20 feature:
 // https://en.cppreference.com/w/cpp/language/aggregate_initialization#Designated_initializers
@@ -173,7 +173,7 @@ inline object get_function_record_pickle_helper(handle mod) {
     return getattr(mod, function_record_pickle_helper_name);
 }
 
-namespace function_record_PyTypeObject_methods {
+PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 
 inline PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     // Create a new instance using the type's tp_alloc slot.
@@ -234,7 +234,7 @@ inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
     return nullptr;
 }
 
-} // namespace function_record_PyTypeObject_methods
+PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
