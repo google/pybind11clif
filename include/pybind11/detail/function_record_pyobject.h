@@ -35,6 +35,11 @@ static PyMethodDef tp_methods_impl[]
        {nullptr, nullptr, 0, nullptr}};
 PYBIND11_WARNING_POP
 
+// Note that this name is versioned.
+constexpr char tp_name_impl[]
+    = "pybind11_detail_function_record_" PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID
+      "_" PYBIND11_PLATFORM_ABI_ID_V4;
+
 PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 
 // Designated initializers are a C++20 feature:
@@ -47,9 +52,7 @@ PYBIND11_WARNING_DISABLE_GCC("-Wmissing-field-initializers")
 #endif
 static PyTypeObject function_record_PyTypeObject = {
     PyVarObject_HEAD_INIT(nullptr, 0)
-    /* const char *tp_name */ "pybind11_detail_function_"
-                              "record_" PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID
-                              "_" PYBIND11_PLATFORM_ABI_ID_V4,
+    /* const char *tp_name */ function_record_PyTypeObject_methods::tp_name_impl,
     /* Py_ssize_t tp_basicsize */ sizeof(function_record_PyObject),
     /* Py_ssize_t tp_itemsize */ 0,
     /* destructor tp_dealloc */ function_record_PyTypeObject_methods::tp_dealloc_impl,
