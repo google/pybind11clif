@@ -559,18 +559,9 @@ protected:
                 = unique_rec.release();
             guarded_strdup.release();
 
-            // TODO 30099: Move to helper function.
-            object scope_module;
-            if (rec->scope) {
-                if (hasattr(rec->scope, "__module__")) {
-                    scope_module = rec->scope.attr("__module__");
-                } else if (hasattr(rec->scope, "__name__")) {
-                    scope_module = rec->scope.attr("__name__");
-                }
-            }
-
-            if (rec->name != nullptr && rec->name[0] != '\0' && scope_module
-                && PyModule_Check(rec->scope.ptr()) != 0) {
+            object scope_module = detail::get_scope_module(rec->scope);
+            if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope
+                && PyModule_Check(rec->scope.ptr()) != 0 && scope_module) {
                 // Call-once initialization.
                 detail::get_function_record_pickle_helper(rec->scope);
             }

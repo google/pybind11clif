@@ -208,15 +208,10 @@ inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
         pybind11_fail(
             "FATAL: function_record_PyTypeObject reduce_ex_impl(): cannot obtain cpp_func_rec.");
     }
-    if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope) {
-        // TODO 30099: Move to helper function.
-        object scope_module;
-        if (hasattr(rec->scope, "__module__")) {
-            scope_module = rec->scope.attr("__module__");
-        } else if (hasattr(rec->scope, "__name__")) {
-            scope_module = rec->scope.attr("__name__");
-        }
-        if (scope_module && PyModule_Check(rec->scope.ptr()) != 0) {
+    if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope
+        && PyModule_Check(rec->scope.ptr()) != 0) {
+        object scope_module = get_scope_module(rec->scope);
+        if (scope_module) {
             return make_tuple(get_function_record_pickle_helper(rec->scope),
                               make_tuple(make_tuple(scope_module, rec->name)))
                 .release()
