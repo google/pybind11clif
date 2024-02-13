@@ -254,32 +254,31 @@ inline object function_record_PyObject_New() {
     return reinterpret_steal<object>((PyObject *) py_func_rec);
 }
 
-inline object get_pybind11_detail_function_record_pickle_helper(handle rec_scope) {
-    constexpr char helper_name[] = "_pybind11_detail_function_record_pickle_helper_v1";
-    if (hasattr(rec_scope, helper_name)) {
-        return rec_scope.attr(helper_name);
-    }
-    std::string py_code("class ");
-    py_code += helper_name;
-    py_code += ":\n";
-    py_code += R"(
-    def __init__(self, function_name):
-        self.function_name = function_name
+inline PyObject *function_record_pickle_helper(PyObject *, PyObject *tup_ptr);
 
-    def __getattr__(self, name):
-        assert name == self.function_name
-        return globals()[self.function_name]
-    )";
-    // Passing the __dict__ directly does not work in some situations.
-    dict run_globals(rec_scope.attr("__dict__"));
-    PyObject *run_result
-        = PyRun_String(py_code.c_str(), Py_file_input, run_globals.ptr(), nullptr);
-    if (run_result == nullptr) {
-        throw error_already_set();
+constexpr char function_record_pickle_helper_name[] = "_function_record_pickle_helper_v1";
+
+static PyMethodDef function_record_pickle_helper_PyMethodDef
+    = {function_record_pickle_helper_name,
+       (PyCFunction) function_record_pickle_helper,
+       METH_O,
+       nullptr};
+
+inline object get_function_record_pickle_helper(handle mod) {
+    if (!hasattr(mod, function_record_pickle_helper_name)) {
+        PyObject *pycfunc = PyCFunction_New(&function_record_pickle_helper_PyMethodDef, nullptr);
+        if (!pycfunc) {
+            pybind11_fail("FATAL: get_function_record_pickle_helper() PyCFunction_NewEx() FAILED");
+        }
+        if (PyModule_AddObject(
+                mod.ptr(), function_record_pickle_helper_name, pycfunc /* steals a reference */)
+            < 0) {
+            Py_DECREF(pycfunc);
+            pybind11_fail(
+                "FATAL: get_function_record_pickle_helper() PyModule_AddObject() FAILED");
+        }
     }
-    Py_DECREF(run_result);
-    setattr(rec_scope, helper_name, run_globals[helper_name]);
-    return rec_scope.attr(helper_name);
+    return getattr(mod, function_record_pickle_helper_name);
 }
 
 PYBIND11_NAMESPACE_END(detail)
@@ -729,13 +728,11 @@ protected:
                 }
             }
 
-#if PY_VERSION_HEX >= 0x03080000
             if (rec->name != nullptr && rec->name[0] != '\0' && scope_module
-                && hasattr(rec->scope, "__dict__")) {
+                && PyModule_Check(rec->scope.ptr()) != 0) {
                 // Call-once initialization.
-                detail::get_pybind11_detail_function_record_pickle_helper(rec->scope);
+                detail::get_function_record_pickle_helper(rec->scope);
             }
-#endif
             m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");
@@ -1423,9 +1420,9 @@ inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
         } else if (hasattr(rec->scope, "__name__")) {
             scope_module = rec->scope.attr("__name__");
         }
-        if (scope_module && hasattr(rec->scope, "__dict__")) {
-            return make_tuple(get_pybind11_detail_function_record_pickle_helper(rec->scope),
-                              make_tuple(rec->name))
+        if (scope_module && PyModule_Check(rec->scope.ptr()) != 0) {
+            return make_tuple(get_function_record_pickle_helper(rec->scope),
+                              make_tuple(make_tuple(scope_module, rec->name)))
                 .release()
                 .ptr();
         }
@@ -1597,6 +1594,27 @@ public:
 // C++20 allows "module" to be used. This is provided for backward compatibility, and for
 // simplicity, if someone wants to use py::module for example, that is perfectly safe.
 using module = module_;
+
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+inline PyObject *function_record_pickle_helper(PyObject *, PyObject *tup_ptr) {
+    auto tup_obj = tuple(reinterpret_borrow<object>(tup_ptr));
+    if (len(tup_obj) != 2) {
+        set_error(PyExc_ValueError, "Internal inconsistency: len(tup_obj) != 2");
+        return nullptr;
+    }
+    auto import_module = module_::import("importlib").attr("import_module");
+    auto mod = import_module(tup_obj[0]);
+    auto py_func = mod.attr(tup_obj[1]);
+    auto namedtuple = module_::import("collections").attr("namedtuple");
+    auto proxy_type
+        = namedtuple(str(function_record_pickle_helper_name) + str("_proxy_") + tup_obj[1],
+                     make_tuple(tup_obj[1]));
+    auto proxy_obj = proxy_type(py_func);
+    return proxy_obj.release().ptr();
+}
+
+PYBIND11_NAMESPACE_END(detail)
 
 /// \ingroup python_builtins
 /// Return a dictionary representing the global variables in the current execution frame,
