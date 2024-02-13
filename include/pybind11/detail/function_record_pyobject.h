@@ -178,37 +178,27 @@ inline object get_function_record_pickle_helper(handle mod) {
 
 PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 
-inline PyObject *tp_new_impl(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-    // Create a new instance using the type's tp_alloc slot.
-    if (type) {
-        pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_new_impl");
-    }
-    return PyType_GenericNew(type, args, kwds);
+// Guard against accidents & oversights, in particular when porting to future Python versions.
+inline PyObject *tp_new_impl(PyTypeObject *, PyObject *, PyObject *) {
+    pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_new_impl");
+    return nullptr; // Unreachable.
 }
 
-inline PyObject *tp_alloc_impl(PyTypeObject *type, Py_ssize_t nitems) {
-    // Use Python's default memory allocation mechanism to allocate a new instance
-    // and initialize all its contents to NULL.
-    if (type) {
-        pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_alloc_impl");
-    }
-    return PyType_GenericAlloc(type, nitems);
+inline PyObject *tp_alloc_impl(PyTypeObject *, Py_ssize_t) {
+    pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_alloc_impl");
+    return nullptr; // Unreachable.
 }
 
-inline int tp_init_impl(PyObject *self, PyObject *, PyObject *) {
-    if (self) {
-        pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_init_impl");
-    }
-    return -1;
+inline int tp_init_impl(PyObject *, PyObject *, PyObject *) {
+    pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_init_impl");
+    return -1; // Unreachable.
 }
 
 // The implementation needs the definition of `class cpp_function`.
 void tp_dealloc_impl(PyObject *self);
 
-inline void tp_free_impl(void *self) {
-    if (self) {
-        pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_free_impl");
-    }
+inline void tp_free_impl(void *) {
+    pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_free_impl");
 }
 
 inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
