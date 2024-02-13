@@ -729,11 +729,13 @@ protected:
                 }
             }
 
+#if PY_VERSION_HEX >= 0x03080000
             if (rec->name != nullptr && rec->name[0] != '\0' && scope_module
                 && hasattr(rec->scope, "__dict__")) {
                 // Call-once initialization.
                 detail::get_pybind11_detail_function_record_pickle_helper(rec->scope);
             }
+#endif
             m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");
