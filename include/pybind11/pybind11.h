@@ -21,6 +21,7 @@
 #include "options.h"
 #include "typing.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <memory>

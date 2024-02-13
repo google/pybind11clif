@@ -8,6 +8,8 @@
 #include "../pytypes.h"
 #include "common.h"
 
+#include <cstring>
+
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 PYBIND11_NAMESPACE_BEGIN(detail)
 
