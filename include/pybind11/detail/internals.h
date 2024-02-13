@@ -329,8 +329,6 @@ inline internals **get_internals_pp_from_capsule(handle obj) {
     return static_cast<internals **>(raw_ptr);
 }
 
-inline void function_record_PyTypeObject_PyType_Ready();
-
 /// Return a reference to the current `internals` data
 PYBIND11_NOINLINE internals &get_internals() {
     auto **&internals_pp = get_internals_pp();
@@ -386,10 +384,6 @@ PYBIND11_NOINLINE internals &get_internals() {
         internals_ptr->default_metaclass = make_default_metaclass();
         internals_ptr->instance_base = make_object_base_type(internals_ptr->default_metaclass);
     }
-
-    // This is not directly related to the `internals`, but also needs to be called only once.
-    function_record_PyTypeObject_PyType_Ready();
-
     return **internals_pp;
 }
 

@@ -211,9 +211,14 @@ static PyTypeObject function_record_PyTypeObject = {
 };
 PYBIND11_WARNING_POP
 
+static bool function_record_PyTypeObject_PyType_Ready_first_call = true;
+
 inline void function_record_PyTypeObject_PyType_Ready() {
-    if (PyType_Ready(&function_record_PyTypeObject) < 0) {
-        throw error_already_set();
+    if (function_record_PyTypeObject_PyType_Ready_first_call) {
+        if (PyType_Ready(&function_record_PyTypeObject) < 0) {
+            throw error_already_set();
+        }
+        function_record_PyTypeObject_PyType_Ready_first_call = false;
     }
 }
 
@@ -245,6 +250,34 @@ inline object function_record_PyObject_New() {
     }
     py_func_rec->cpp_func_rec = nullptr; // For clarity/purity. Redundant in practice.
     return reinterpret_steal<object>((PyObject *) py_func_rec);
+}
+
+inline object get_pybind11_detail_function_record_pickle_helper(handle rec_scope) {
+    constexpr char helper_name[] = "_pybind11_detail_function_record_pickle_helper_v1";
+    if (hasattr(rec_scope, helper_name)) {
+        return rec_scope.attr(helper_name);
+    }
+    std::string py_code("class ");
+    py_code += helper_name;
+    py_code += ":\n";
+    py_code += R"(
+    def __init__(self, function_name):
+        self.function_name = function_name
+
+    def __getattr__(self, name):
+        assert name == self.function_name
+        return globals()[self.function_name]
+    )";
+    // Passing the __dict__ directly does not work in some situations.
+    dict run_globals(rec_scope.attr("__dict__"));
+    PyObject *run_result
+        = PyRun_String(py_code.c_str(), Py_file_input, run_globals.ptr(), nullptr);
+    if (run_result == nullptr) {
+        throw error_already_set();
+    }
+    Py_DECREF(run_result);
+    setattr(rec_scope, helper_name, run_globals[helper_name]);
+    return rec_scope.attr(helper_name);
 }
 
 PYBIND11_NAMESPACE_END(detail)
@@ -678,6 +711,7 @@ protected:
                 = reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(dispatcher));
             rec->def->ml_flags = METH_VARARGS | METH_KEYWORDS;
 
+            detail::function_record_PyTypeObject_PyType_Ready(); // Call-once initialization.
             object py_func_rec = detail::function_record_PyObject_New();
             ((detail::function_record_PyObject *) py_func_rec.ptr())->cpp_func_rec
                 = unique_rec.release();
@@ -693,6 +727,11 @@ protected:
                 }
             }
 
+            if (rec->name != nullptr && rec->name[0] != '\0' && scope_module
+                && hasattr(rec->scope, "__dict__")) {
+                // Call-once initialization.
+                detail::get_pybind11_detail_function_record_pickle_helper(rec->scope);
+            }
             m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");
@@ -1365,6 +1404,32 @@ inline void tp_free_impl(void *self) {
     }
 }
 
+inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
+    // Deliberately ignoring the arguments for simplicity (expected is `protocol: int`).
+    const function_record *rec = function_record_ptr_from_PyObject(self);
+    if (rec == nullptr) {
+        pybind11_fail(
+            "FATAL: function_record_PyTypeObject reduce_ex_impl(): cannot obtain cpp_func_rec.");
+    }
+    if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope) {
+        // TODO 30099: Move to helper function.
+        object scope_module;
+        if (hasattr(rec->scope, "__module__")) {
+            scope_module = rec->scope.attr("__module__");
+        } else if (hasattr(rec->scope, "__name__")) {
+            scope_module = rec->scope.attr("__name__");
+        }
+        if (scope_module && hasattr(rec->scope, "__dict__")) {
+            return make_tuple(get_pybind11_detail_function_record_pickle_helper(rec->scope),
+                              make_tuple(rec->name))
+                .release()
+                .ptr();
+        }
+    }
+    set_error(PyExc_RuntimeError, repr(self) + str(" is not pickleable."));
+    return nullptr;
+}
+
 } // namespace function_record_PyTypeObject_methods
 
 /// Instance creation function for all pybind11 types. It only allocates space for the
@@ -1523,42 +1588,6 @@ public:
         return *this;
     }
 };
-
-PYBIND11_NAMESPACE_BEGIN(detail)
-
-namespace function_record_PyTypeObject_methods {
-
-inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
-    // Deliberately ignoring the arguments for simplicity (expected is `protocol: int`).
-    const function_record *rec = function_record_ptr_from_PyObject(self);
-    if (rec == nullptr) {
-        pybind11_fail(
-            "FATAL: function_record_PyTypeObject reduce_ex_impl(): cannot obtain cpp_func_rec.");
-    }
-    if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope) {
-        // TODO 30099: Move to helper function.
-        object scope_module;
-        if (hasattr(rec->scope, "__module__")) {
-            scope_module = rec->scope.attr("__module__");
-        } else if (hasattr(rec->scope, "__name__")) {
-            scope_module = rec->scope.attr("__name__");
-        }
-
-        if (scope_module) {
-            return make_tuple(module_::import("importlib")
-                                  .attr("_pybind11_detail_function_record_import_helper"),
-                              make_tuple(scope_module, rec->name))
-                .release()
-                .ptr();
-        }
-    }
-    set_error(PyExc_RuntimeError, repr(self) + str(" is not pickleable."));
-    return nullptr;
-}
-
-} // namespace function_record_PyTypeObject_methods
-
-PYBIND11_NAMESPACE_END(detail)
 
 // When inside a namespace (or anywhere as long as it's not the first item on a line),
 // C++20 allows "module" to be used. This is provided for backward compatibility, and for
