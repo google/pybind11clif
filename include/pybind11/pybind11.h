@@ -1608,7 +1608,7 @@ inline PyObject *function_record_pickle_helper(PyObject *, PyObject *tup_ptr) {
     auto py_func = mod.attr(tup_obj[1]);
     auto namedtuple = module_::import("collections").attr("namedtuple");
     auto proxy_type
-        = namedtuple(str(function_record_pickle_helper_name) + str("_proxy_") + tup_obj[1],
+        = namedtuple(str(function_record_pickle_helper_name) + str("_proxy_") + str(tup_obj[1]),
                      make_tuple(tup_obj[1]));
     auto proxy_obj = proxy_type(py_func);
     return proxy_obj.release().ptr();
