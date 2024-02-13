@@ -138,7 +138,9 @@ void tp_free_impl(void *self);
 static PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *);
 
 PYBIND11_WARNING_PUSH
+#if defined(__GNUC__) && __GNUC__ >= 8
 PYBIND11_WARNING_DISABLE_GCC("-Wcast-function-type")
+#endif
 static PyMethodDef MethodsStaticAlloc[]
     = {{"__reduce_ex__", (PyCFunction) reduce_ex_impl, METH_VARARGS | METH_KEYWORDS, nullptr},
        {nullptr, nullptr, 0, nullptr}};
