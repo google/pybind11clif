@@ -561,11 +561,6 @@ protected:
             guarded_strdup.release();
 
             object scope_module = detail::get_scope_module(rec->scope);
-            if (rec->name != nullptr && rec->name[0] != '\0' && rec->scope
-                && PyModule_Check(rec->scope.ptr()) != 0 && scope_module) {
-                // Call-once initialization.
-                detail::get_function_record_pickle_helper(rec->scope);
-            }
             m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");

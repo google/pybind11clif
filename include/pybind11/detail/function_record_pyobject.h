@@ -214,8 +214,9 @@ inline PyObject *reduce_ex_impl(PyObject *self, PyObject *, PyObject *) {
         && PyModule_Check(rec->scope.ptr()) != 0) {
         object scope_module = get_scope_module(rec->scope);
         if (scope_module) {
-            return make_tuple(get_function_record_pickle_helper(rec->scope),
-                              make_tuple(make_tuple(scope_module, rec->name)))
+            return make_tuple(reinterpret_borrow<object>(PyEval_GetBuiltins())["eval"],
+                              make_tuple(str("__import__('importlib').import_module('")
+                                         + scope_module + str("')")))
                 .release()
                 .ptr();
         }
