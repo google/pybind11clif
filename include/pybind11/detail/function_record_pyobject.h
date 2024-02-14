@@ -150,34 +150,6 @@ inline object function_record_PyObject_New() {
     return reinterpret_steal<object>((PyObject *) py_func_rec);
 }
 
-// The implementation needs the definition of `class module_`.
-PyObject *function_record_pickle_helper(PyObject *, PyObject *tup_ptr);
-
-constexpr char function_record_pickle_helper_name[] = "_function_record_pickle_helper_v1";
-
-static PyMethodDef function_record_pickle_helper_PyMethodDef
-    = {function_record_pickle_helper_name,
-       (PyCFunction) function_record_pickle_helper,
-       METH_O,
-       nullptr};
-
-inline object get_function_record_pickle_helper(handle mod) {
-    if (!hasattr(mod, function_record_pickle_helper_name)) {
-        PyObject *pycfunc = PyCFunction_New(&function_record_pickle_helper_PyMethodDef, nullptr);
-        if (!pycfunc) {
-            pybind11_fail("FATAL: get_function_record_pickle_helper() PyCFunction_NewEx() FAILED");
-        }
-        if (PyModule_AddObject(
-                mod.ptr(), function_record_pickle_helper_name, pycfunc /* steals a reference */)
-            < 0) {
-            Py_DECREF(pycfunc);
-            pybind11_fail(
-                "FATAL: get_function_record_pickle_helper() PyModule_AddObject() FAILED");
-        }
-    }
-    return getattr(mod, function_record_pickle_helper_name);
-}
-
 PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 
 // Guard against accidents & oversights, in particular when porting to future Python versions.

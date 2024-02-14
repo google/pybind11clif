@@ -1368,28 +1368,6 @@ public:
 // simplicity, if someone wants to use py::module for example, that is perfectly safe.
 using module = module_;
 
-PYBIND11_NAMESPACE_BEGIN(detail)
-
-// This implementation needs the definition of `class module_`.
-inline PyObject *function_record_pickle_helper(PyObject *, PyObject *tup_ptr) {
-    auto tup_obj = tuple(reinterpret_borrow<object>(tup_ptr));
-    if (len(tup_obj) != 2) {
-        set_error(PyExc_ValueError, "Internal inconsistency: len(tup_obj) != 2");
-        return nullptr;
-    }
-    auto import_module = module_::import("importlib").attr("import_module");
-    auto mod = import_module(tup_obj[0]);
-    auto py_func = mod.attr(tup_obj[1]);
-    auto namedtuple = module_::import("collections").attr("namedtuple");
-    auto proxy_type
-        = namedtuple(str(function_record_pickle_helper_name) + str("_proxy_") + str(tup_obj[1]),
-                     make_tuple(tup_obj[1]));
-    auto proxy_obj = proxy_type(py_func);
-    return proxy_obj.release().ptr();
-}
-
-PYBIND11_NAMESPACE_END(detail)
-
 /// \ingroup python_builtins
 /// Return a dictionary representing the global variables in the current execution frame,
 /// or ``__main__.__dict__`` if there is no frame (usually when the interpreter is embedded).
