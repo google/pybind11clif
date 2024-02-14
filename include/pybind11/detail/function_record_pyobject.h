@@ -183,17 +183,17 @@ PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
 // Guard against accidents & oversights, in particular when porting to future Python versions.
 inline PyObject *tp_new_impl(PyTypeObject *, PyObject *, PyObject *) {
     pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_new_impl");
-    return nullptr; // Unreachable.
+    // return nullptr; // Unreachable.
 }
 
 inline PyObject *tp_alloc_impl(PyTypeObject *, Py_ssize_t) {
     pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_alloc_impl");
-    return nullptr; // Unreachable.
+    // return nullptr; // Unreachable.
 }
 
 inline int tp_init_impl(PyObject *, PyObject *, PyObject *) {
     pybind11_fail("UNEXPECTED CALL OF function_record_PyTypeObject_methods::tp_init_impl");
-    return -1; // Unreachable.
+    // return -1; // Unreachable.
 }
 
 // The implementation needs the definition of `class cpp_function`.
