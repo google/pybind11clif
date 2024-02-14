@@ -2,6 +2,8 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// For background see the description of PR google/pywrapcc#30099.
+
 #pragma once
 
 #include "../attr.h"
