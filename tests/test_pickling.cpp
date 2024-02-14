@@ -8,11 +8,14 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+#include <pybind11/stl.h>
+
 #include "pybind11_tests.h"
 
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace exercise_trampoline {
 
@@ -59,6 +62,53 @@ void wrap(py::module m) {
 }
 
 } // namespace exercise_trampoline
+
+namespace exercise_getinitargs_getstate_setstate {
+
+// Exercise `__setstate__[non-constructor]` (see google/pywrapcc#30094), which
+// was added to support a pickle protocol as established with Boost.Python
+// (in 2002):
+//   https://www.boost.org/doc/libs/1_31_0/libs/python/doc/v2/pickle.html
+// This mechanism was also adopted for PyCLIF:
+//   https://github.com/google/clif/blob/7d388e1de7db5beeb3d7429c18a2776d8188f44f/clif/testing/python/pickle_compatibility.clif
+// The code below exercises the pickle protocol intentionally exactly as used
+// in PyCLIF, to ensure that pybind11 stays fully compatible with existing
+// client code relying on the long-established protocol. (It is impractical to
+// change all such client code.)
+
+class StoreTwoWithState {
+public:
+    StoreTwoWithState(int v0, int v1) : values_{v0, v1}, state_{"blank"} {}
+    const std::vector<int> &GetInitArgs() const { return values_; }
+    const std::string &GetState() const { return state_; }
+    void SetState(const std::string &state) { state_ = state; }
+
+private:
+    std::vector<int> values_;
+    std::string state_;
+};
+
+void wrap(py::module m) {
+    py::class_<StoreTwoWithState>(std::move(m), "StoreTwoWithState")
+        .def(py::init<int, int>())
+        .def("__getinitargs__",
+             [](const StoreTwoWithState &self) { return py::tuple(py::cast(self.GetInitArgs())); })
+        .def("__getstate__", &StoreTwoWithState::GetState)
+        .def(
+            "__reduce_ex__",
+            [](py::handle self, int /*protocol*/) {
+                return py::make_tuple(self.attr("__class__"),
+                                      self.attr("__getinitargs__")(),
+                                      self.attr("__getstate__")());
+            },
+            py::arg("protocol") = -1)
+        .def(
+            "__setstate__[non-constructor]", // See google/pywrapcc#30094 for background.
+            [](StoreTwoWithState *self, const std::string &state) { self->SetState(state); },
+            py::arg("state"));
+}
+
+} // namespace exercise_getinitargs_getstate_setstate
 
 TEST_SUBMODULE(pickling, m) {
     m.def("simple_callable", []() { return 20220426; });
@@ -191,4 +241,5 @@ TEST_SUBMODULE(pickling, m) {
 #endif
 
     exercise_trampoline::wrap(m);
+    exercise_getinitargs_getstate_setstate::wrap(m);
 }

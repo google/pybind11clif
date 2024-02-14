@@ -748,7 +748,7 @@ struct smart_holder_type_caster : smart_holder_type_caster_load<T>,
 
     static handle cast(T &&src, return_value_policy /*policy*/, handle parent) {
         // type_caster_base BEGIN
-        return cast(&src, return_value_policy::move, parent);
+        return cast(std::addressof(src), return_value_policy::move, parent);
         // type_caster_base END
     }
 
@@ -759,7 +759,7 @@ struct smart_holder_type_caster : smart_holder_type_caster_load<T>,
             || policy == return_value_policy::_clif_automatic) {
             policy = return_value_policy::copy;
         }
-        return cast(&src, policy, parent);
+        return cast(std::addressof(src), policy, parent);
         // type_caster_base END
     }
 
