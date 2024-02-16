@@ -19,6 +19,33 @@ def test_pickle_simple_callable(protocol):
     assert b"simple_callable" in serialized
     deserialized = pickle.loads(serialized)
     assert deserialized() == 20220426
+    assert deserialized is m.simple_callable
+    orig_red = m.simple_callable.__reduce_ex__(protocol)
+    desz_red = deserialized.__reduce_ex__(protocol)
+    orig_fr = orig_red[1][0]
+    desz_fr = desz_red[1][0]
+    assert orig_fr is desz_fr
+    seri_orig_fr = pickle.dumps(orig_fr)
+    desz_orig_fr = pickle.loads(seri_orig_fr)
+    print(f"\nLOOOK {dir(m.simple_callable)=}")
+    print(f"\nLOOOK {repr(orig_fr)=}")
+    print(f"\nLOOOK {repr(m.simple_callable.__self__)=}")
+    print(f"\nLOOOK {dir(type(m.simple_callable))=}")
+    print(f"\nLOOOK {repr(desz_orig_fr)=}", flush=True)
+
+    """
+
+(<built-in function eval>, ("__import__('importlib').import_module('pybind11_tests.pickling').simple_callable.__self__",))
+
+LOOOK repr(orig_fr)='<pybind11_detail_function_record_v1__gcc_libstdcpp_cxxabi1018_sh_def object at 0x7efd316d9f70>'
+
+LOOOK repr(m.simple_callable.__self__)='<pybind11_detail_function_record_v1__gcc_libstdcpp_cxxabi1018_sh_def object at 0x7efd316d9f70>'
+
+LOOOK dir(type(m.simple_callable))=['__call__', '__class__', '__delattr__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__name__', '__ne__', '__new__', '__qualname__', '__reduce__', '__reduce_ex__', '__repr__', '__self__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__text_signature__']
+
+LOOOK repr(desz_orig_fr)="<module 'pybind11_tests.pickling'>"
+
+    """
 
 
 @pytest.mark.parametrize("cls_name", ["Pickleable", "PickleableNew"])
