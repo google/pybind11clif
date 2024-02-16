@@ -20,32 +20,27 @@ def test_pickle_simple_callable(protocol):
     deserialized = pickle.loads(serialized)
     assert deserialized() == 20220426
     assert deserialized is m.simple_callable
-    orig_red = m.simple_callable.__reduce_ex__(protocol)
-    desz_red = deserialized.__reduce_ex__(protocol)
-    orig_fr = orig_red[1][0]
-    desz_fr = desz_red[1][0]
-    assert orig_fr is desz_fr
-    seri_orig_fr = pickle.dumps(orig_fr)
-    desz_orig_fr = pickle.loads(seri_orig_fr)
-    print(f"\nLOOOK {dir(m.simple_callable)=}")
-    print(f"\nLOOOK {repr(orig_fr)=}")
-    print(f"\nLOOOK {repr(m.simple_callable.__self__)=}")
-    print(f"\nLOOOK {dir(type(m.simple_callable))=}")
-    print(f"\nLOOOK {repr(desz_orig_fr)=}", flush=True)
 
-    """
+    # UNUSUAL: A pickle roundtrip starting with `m.simple_callable.__self__` yields `m`:
+    assert (
+        pickle.loads(pickle.dumps(m.simple_callable.__self__, protocol=protocol)) is m
+    )
 
-(<built-in function eval>, ("__import__('importlib').import_module('pybind11_tests.pickling').simple_callable.__self__",))
+    # This is not expected to create issues because the only purpose of
+    # `m.simple_callable.__self__` is to enable pickling: the only method it has is
+    # `__reduce_ex__`. Direct access for any other purpose is not supported.
+    # Note that `repr(m.simple_callable.__self__)` shows, e.g.:
+    # `<pybind11_detail_function_record_v1__gcc_libstdcpp_cxxabi1018 object at 0x...>`
+    # It is considered to be as much an implementation detail as the
+    # `pybind11::detail::function_record` C++ type is.
 
-LOOOK repr(orig_fr)='<pybind11_detail_function_record_v1__gcc_libstdcpp_cxxabi1018_sh_def object at 0x7efd316d9f70>'
-
-LOOOK repr(m.simple_callable.__self__)='<pybind11_detail_function_record_v1__gcc_libstdcpp_cxxabi1018_sh_def object at 0x7efd316d9f70>'
-
-LOOOK dir(type(m.simple_callable))=['__call__', '__class__', '__delattr__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__name__', '__ne__', '__new__', '__qualname__', '__reduce__', '__reduce_ex__', '__repr__', '__self__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__text_signature__']
-
-LOOOK repr(desz_orig_fr)="<module 'pybind11_tests.pickling'>"
-
-    """
+    # @rainwoodman suggested that the unusual pickle roundtrip behavior could be
+    # avoided by changing `reduce_ex_impl()` to produce, e.g.:
+    # `"__import__('importlib').import_module('pybind11_tests.pickling').simple_callable.__self__"`
+    # as the argument for the `eval()` function, and adding a getter to the
+    # `function_record_PyTypeObject` that returns `self`. However, the additional code complexity
+    # for this is deemed warranted only if the unusual pickle roundtrip behavior actually
+    # creates issues.
 
 
 @pytest.mark.parametrize("cls_name", ["Pickleable", "PickleableNew"])
