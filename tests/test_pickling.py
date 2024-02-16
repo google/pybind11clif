@@ -22,10 +22,11 @@ def test_pickle_simple_callable(protocol):
     assert deserialized is m.simple_callable
 
     # UNUSUAL: A pickle roundtrip starting with `m.simple_callable.__self__` yields `m`:
-    assert (
-        pickle.loads(pickle.dumps(m.simple_callable.__self__, protocol=protocol)) is m
-    )
-
+    if not env.PYPY:
+        assert (
+            pickle.loads(pickle.dumps(m.simple_callable.__self__, protocol=protocol))
+            is m
+        )
     # This is not expected to create issues because the only purpose of
     # `m.simple_callable.__self__` is to enable pickling: the only method it has is
     # `__reduce_ex__`. Direct access for any other purpose is not supported.
