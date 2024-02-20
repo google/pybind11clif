@@ -21,7 +21,7 @@ def test_pickle_simple_callable(protocol):
     assert deserialized() == 20220426
     assert deserialized is m.simple_callable
 
-    # UNUSUAL: A pickle roundtrip starting with `m.simple_callable.__self__` yields `m`:
+    # UNUSUAL: function record pickle roundtrip returns a module, not a function record object:
     if not env.PYPY:
         assert (
             pickle.loads(pickle.dumps(m.simple_callable.__self__, protocol=protocol))
