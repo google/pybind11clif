@@ -4,6 +4,8 @@
 
 // For background see the description of PR google/pywrapcc#30099.
 
+// IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
+
 #pragma once
 
 #include "../attr.h"
