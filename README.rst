@@ -1,24 +1,24 @@
-==========================================================================
-pywrapcc — A fork of pybind11 set up for sustained innovation & continuity
-==========================================================================
+===========================================================================
+pybind11k — A fork of pybind11 set up for sustained innovation & continuity
+===========================================================================
 
-Warning — New features are still very much in flux
-==================================================
+Warning — New features are still in flux
+========================================
 
-This branch is used Google-internally to build thousands of extensions that are deployed to production and is also regularly tested with all CLANG sanitizers. However, feature stability guarantees are currently limited in this way:
+pybind11k is used Google-internally to build thousands of extensions that are deployed to production and is also regularly tested with all CLANG sanitizers. However, feature stability guarantees are currently limited in this way:
 
-0. pywrapcc is meant to be a fully backward-compatible superset of `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_. If not, that is not intended, please let us know by creating an issue.
+0. pybind11k is meant to maximize backward-compatiblity with `pybind11 (master) <https://github.com/pybind/pybind11/tree/master>`_.
 
 1. The main driving force for adding new features is the PyCLIF-pybind11 integration work (for Googlers: `go/pyclif_pybind11_fusion <http://go/pyclif_pybind11_fusion>`_). Until this work is completed, it is impractical for us to take external use cases into account when evolving new features. This is because we can globally test changes fairly easily internally, but not externally.
 
 2. After the PyCLIF-pybind11 work is completed we will commit to greater feature stability and update the documentation.
 
-Outstanding new features: ``py::native_enum`` (google/pywrapcc#30005), ``py::return_value_policy_pack`` (google/pywrapcc#30011), enhanced pybind11/functional.h API (google/pywrapcc#30022)
+Outstanding new features: ``py::native_enum`` (google/pybind11k#30005), ``py::return_value_policy_pack`` (google/pybind11k#30011), enhanced pybind11/functional.h API (google/pybind11k#30022)
 
 Background / Overview
 =====================
 
-This pywrapcc repo originated from the `pybind11 smart_holder <https://github.com/pybind/pybind11/tree/smart_holder>`_ branch. It was created with two important goals in mind:
+This pybind11k fork originated from the `pybind11 smart_holder <https://github.com/pybind/pybind11/tree/smart_holder>`_ branch. It was created with two important goals in mind:
 
 1. Sustained innovation and proactive bug fixes.
 2. Sustained continuity.
@@ -29,10 +29,20 @@ Regarding goal 1: pybind11 has two serious long-standing bugs (pybind/pybind11#1
 
 Regarding goal 2: The original and still current ``pybind11::smart_holder`` implementation is a compromise solution that avoids an `"ABI break" <https://github.com/pybind/pybind11/blob/09db6445d8da6e918c2d2be3aa4e7b0ddd8077c7/include/pybind11/detail/internals.h#L25>`_, concretely, changes to the ``pybind11::details::internals`` ``struct``. Each time the ``internals`` are changed, the ``PYBIND11_INTERNALS_VERSION`` needs to be incremented, cutting off interoperability with existing PyPI wheels based on pybind11, without giving any hint about this problem at runtime. In the meantime, two other PRs were merged on the pybind11 master branch that require changes to the ``internals``, PRs pybind/pybind11#3275 and pybind/pybind11#4254. To avoid ABI breaks, these PRs were effectively held back behind ``#ifdef`` s. This problem came to a breaking point with PR pybind/pybind11#4329, for which hiding the new feature behind ``#ifdef`` s is not a practical option.
 
-Obviously, neither repeatedly breaking interoperability with existing PyPI wheels, nor holding back bug fixes and new features, is desirable. Therefore PR pybind/pybind11#4329 was extended to include a generalization of the ``internals`` approach, under the name ``cross_extension_shared_state``. The fundamental difference is that established shared state is left untouched, and new shared states are added as needed, largely resolving the conflict between innovation & continuity. The price to pay is added complexity managing the evolving shared states, but that is assumed to be a relatively small extra effort for a few developers, resulting in a big usability gain for a much larger number of users. Ultimately, this is just the familiar innovate-deprecate-cleanup life cycle typical for many (all?) long-term successful major projects (e.g. C++, Python). Even pywrapcc developers are likely to see this as a win worth paying a price for, because they are more free to innovate.
+Obviously, neither repeatedly breaking interoperability with existing PyPI wheels, nor holding back bug fixes and new features, is desirable. Therefore PR pybind/pybind11#4329 was extended to include a generalization of the ``internals`` approach, under the name ``cross_extension_shared_state``. The fundamental difference is that established shared state is left untouched, and new shared states are added as needed, largely resolving the conflict between innovation & continuity. The price to pay is added complexity managing the evolving shared states, but that is assumed to be a relatively small extra effort for a few developers, resulting in a big usability gain for a much larger number of users. Ultimately, this is just the familiar innovate-deprecate-cleanup life cycle typical for many (all?) long-term successful major projects (e.g. C++, Python). Even pybind11k developers are likely to see this as a win worth paying a price for, because they are more free to innovate.
 
-A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs, more than arbitrary "let's change some names" decisions. ABI compatibility will be phased out gradually, on time scales similar to Python EOL policies. Eventually there may be little or no "pybind11" left in pywrapcc, but this will certainly take some time.
+A direct consequence of goal 2. is that the C++ pybind11 namespace cannot abruptly be changed, because renaming would break both API and ABI compatibility. The intent is to change the API gradually, driven primarily by code health and innovation-related refactoring needs.
 
+Notes regarding the choice of name for this fork
+================================================
+
+The main motivations for this choice of name are:
+
+* We want it to be immediately obvious that pybind11k is rooted in pybind11. Users should not be surprised to find that the main include is still ``pybind11/pybind11.h``, the C++ namespace name is still ``pybind11``, the C++ macros are still prefixed with ``PYBIND11_``, and that ``pip install pybind11k`` (not yet available) produces an installation similar to that of ``pip install pybind11``.
+
+* ``11k`` is short for ``11000``, not to be taken too seriously, but it is meant to signal that we will inevitably need to move beyond the C++11 standard, and that any software needs to evolve to survive long-term.
+
+* And yes, the ``k`` is also playing on `"Py3k" <https://www.python.org/download/releases/3.0/>`_.
 
 ORIGINAL pybind11 README below (to be updated)
 ==============================================
