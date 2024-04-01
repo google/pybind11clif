@@ -39,12 +39,23 @@ if(NOT Python_FOUND AND NOT Python3_FOUND)
     set(_pybind11_dev_component Development.Module OPTIONAL_COMPONENTS Development.Embed)
   endif()
 
+  # Callers need to be able to access Python_EXECUTABLE
+  set(_pybind11_global_keyword "")
+  if(NOT is_config AND NOT DEFINED Python_ARTIFACTS_INTERACTIVE)
+    set(Python_ARTIFACTS_INTERACTIVE TRUE)
+    if(NOT CMAKE_VERSION VERSION_LESS 3.24)
+      set(_pybind11_global_keyword "GLOBAL")
+    endif()
+  endif()
+
   find_package(Python 3.6 REQUIRED COMPONENTS Interpreter ${_pybind11_dev_component}
-                                              ${_pybind11_quiet})
+                                              ${_pybind11_quiet} ${_pybind11_global_keyword})
 
   # If we are in submodule mode, export the Python targets to global targets.
   # If this behavior is not desired, FindPython _before_ pybind11.
-  if(NOT is_config)
+  if(NOT is_config
+     AND Python_ARTIFACTS_INTERACTIVE
+     AND _pybind11_global_keyword STREQUAL "")
     if(TARGET Python::Python)
       set_property(TARGET Python::Python PROPERTY IMPORTED_GLOBAL TRUE)
     endif()
@@ -52,6 +63,22 @@ if(NOT Python_FOUND AND NOT Python3_FOUND)
     if(TARGET Python::Module)
       set_property(TARGET Python::Module PROPERTY IMPORTED_GLOBAL TRUE)
     endif()
+  endif()
+
+  # Explicitly export version for callers (including our own functions)
+  if(NOT is_config AND Python_ARTIFACTS_INTERACTIVE)
+    set(Python_VERSION
+        "${Python_VERSION}"
+        CACHE INTERNAL "")
+    set(Python_VERSION_MAJOR
+        "${Python_VERSION_MAJOR}"
+        CACHE INTERNAL "")
+    set(Python_VERSION_MINOR
+        "${Python_VERSION_MINOR}"
+        CACHE INTERNAL "")
+    set(Python_VERSION_PATCH
+        "${Python_VERSION_PATCH}"
+        CACHE INTERNAL "")
   endif()
 endif()
 
@@ -83,14 +110,16 @@ if(NOT DEFINED ${_Python}_EXECUTABLE)
 
 endif()
 
-if(NOT ${_Python}_EXECUTABLE STREQUAL PYBIND11_PYTHON_EXECUTABLE_LAST)
+if(DEFINED PYBIND11_PYTHON_EXECUTABLE_LAST AND NOT ${_Python}_EXECUTABLE STREQUAL
+                                               PYBIND11_PYTHON_EXECUTABLE_LAST)
   # Detect changes to the Python version/binary in subsequent CMake runs, and refresh config if needed
   unset(PYTHON_IS_DEBUG CACHE)
   unset(PYTHON_MODULE_EXTENSION CACHE)
-  set(PYBIND11_PYTHON_EXECUTABLE_LAST
-      "${${_Python}_EXECUTABLE}"
-      CACHE INTERNAL "Python executable during the last CMake run")
 endif()
+
+set(PYBIND11_PYTHON_EXECUTABLE_LAST
+    "${${_Python}_EXECUTABLE}"
+    CACHE INTERNAL "Python executable during the last CMake run")
 
 if(NOT DEFINED PYTHON_IS_DEBUG)
   # Debug check - see https://stackoverflow.com/questions/646518/python-how-to-detect-debug-Interpreter

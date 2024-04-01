@@ -81,6 +81,10 @@ struct dynamic_attr {};
 /// Annotation which enables the buffer protocol for a type
 struct buffer_protocol {};
 
+/// Annotation which enables releasing the GIL before calling the C++ destructor of wrapped
+/// instances (pybind/pybind11#1446).
+struct release_gil_before_calling_cpp_dtor {};
+
 /// Annotation which requests that a special metaclass is created for a type
 struct metaclass {
     handle value;
@@ -179,17 +183,25 @@ struct argument_record {
     const char *name;  ///< Argument name
     const char *descr; ///< Human-readable version of the argument value
     handle value;      ///< Associated Python object
+    // The explicit value_is_nullptr variable is for safety, to unambiguously
+    // distinguish these two cases in all situations:
+    // * value is nullptr on purpose (value_is_nullptr true).
+    // * value is nullptr because of an error condition (value_is_nullptr false).
+    bool value_is_nullptr;
     from_python_policies policies;
 
     argument_record(const char *name,
                     const char *descr,
                     handle value,
+                    bool value_is_nullptr,
                     const from_python_policies &policies)
-        : name(name), descr(descr), value(value), policies(policies) {}
+        : name(name), descr(descr), value(value), value_is_nullptr(value_is_nullptr),
+          policies(policies) {}
 };
 
 /// Internal data structure which holds metadata about a bound function (signature, overloads,
 /// etc.)
+#define PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID "v1" // PLEASE UPDATE if the struct is changed.
 struct function_record {
     function_record()
         : is_constructor(false), is_new_style_constructor(false), is_stateless(false),
@@ -274,7 +286,8 @@ struct function_record {
 struct type_record {
     PYBIND11_NOINLINE type_record()
         : multiple_inheritance(false), dynamic_attr(false), buffer_protocol(false),
-          default_holder(true), module_local(false), is_final(false) {}
+          default_holder(true), module_local(false), is_final(false),
+          release_gil_before_calling_cpp_dtor(false) {}
 
     /// Handle to the parent scope
     handle scope;
@@ -332,6 +345,9 @@ struct type_record {
 
     /// Is the class inheritable from python classes?
     bool is_final : 1;
+
+    /// Solves pybind/pybind11#1446
+    bool release_gil_before_calling_cpp_dtor : 1;
 
     PYBIND11_NOINLINE void add_base(const std::type_info &base, void *(*caster)(void *) ) {
         auto *base_info = detail::get_type_info(base, false);
@@ -474,8 +490,11 @@ inline void check_kw_only_arg(const arg &a, function_record *r) {
 
 inline void append_self_arg_if_needed(function_record *r) {
     if (r->is_method && r->args.empty()) {
-        r->args.emplace_back(
-            "self", nullptr, handle(), from_python_policies(/*convert=*/true, /*none=*/false));
+        r->args.emplace_back("self",
+                             nullptr,
+                             handle(),
+                             /*value_is_nullptr=*/false,
+                             from_python_policies(/*convert=*/true, /*none=*/false));
     }
 }
 
@@ -488,6 +507,7 @@ struct process_attribute<arg> : process_attribute_default<arg> {
             a.name,
             nullptr,
             handle(),
+            /*value_is_nullptr=*/false,
             from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
@@ -504,10 +524,11 @@ struct process_attribute<arg_v> : process_attribute_default<arg_v> {
             r->args.emplace_back("self",
                                  /*descr=*/nullptr,
                                  /*parent=*/handle(),
+                                 /*value_is_nullptr=*/false,
                                  from_python_policies(/*convert=*/true, /*none=*/false));
         }
 
-        if (!a.value) {
+        if (!a.value && !a.value_is_nullptr) {
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES)
             std::string descr("'");
             if (a.name) {
@@ -537,6 +558,7 @@ struct process_attribute<arg_v> : process_attribute_default<arg_v> {
             a.name,
             a.descr,
             a.value.inc_ref(),
+            a.value_is_nullptr,
             from_python_policies(a.m_policies.rvpp, !a.flag_noconvert, a.flag_none));
 
         check_kw_only_arg(a, r);
@@ -621,6 +643,14 @@ struct process_attribute<metaclass> : process_attribute_default<metaclass> {
 template <>
 struct process_attribute<module_local> : process_attribute_default<module_local> {
     static void init(const module_local &l, type_record *r) { r->module_local = l.value; }
+};
+
+template <>
+struct process_attribute<release_gil_before_calling_cpp_dtor>
+    : process_attribute_default<release_gil_before_calling_cpp_dtor> {
+    static void init(const release_gil_before_calling_cpp_dtor &, type_record *r) {
+        r->release_gil_before_calling_cpp_dtor = true;
+    }
 };
 
 /// Process a 'prepend' attribute, putting this at the beginning of the overload chain

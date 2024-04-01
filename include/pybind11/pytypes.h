@@ -63,6 +63,7 @@ struct sequence_item;
 struct list_item;
 struct tuple_item;
 } // namespace accessor_policies
+// PLEASE KEEP handle_type_name SPECIALIZATIONS IN SYNC.
 using obj_attr_accessor = accessor<accessor_policies::obj_attr>;
 using str_attr_accessor = accessor<accessor_policies::str_attr>;
 using item_accessor = accessor<accessor_policies::generic_item>;
@@ -1366,6 +1367,18 @@ template <return_value_policy policy = return_value_policy::automatic_reference>
 class simple_collector;
 template <return_value_policy policy = return_value_policy::automatic_reference>
 class unpacking_collector;
+
+inline object get_scope_module(handle scope) {
+    if (scope) {
+        if (hasattr(scope, "__module__")) {
+            return scope.attr("__module__");
+        }
+        if (hasattr(scope, "__name__")) {
+            return scope.attr("__name__");
+        }
+    }
+    return object();
+}
 
 PYBIND11_NAMESPACE_END(detail)
 

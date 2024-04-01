@@ -11,6 +11,7 @@
 #pragma once
 
 #include "detail/class.h"
+#include "detail/function_record_pyobject.h"
 #include "detail/init.h"
 #include "detail/native_enum_data.h"
 #include "detail/smart_holder_sfinae_hooks_only.h"
@@ -20,6 +21,7 @@
 #include "options.h"
 #include "typing.h"
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -394,6 +396,11 @@ protected:
         // it alive.
         auto *rec = unique_rec.get();
 
+        // Note the "__setstate__" manipulation below.
+        rec->is_constructor = rec->name != nullptr
+                              && (std::strcmp(rec->name, "__init__") == 0
+                                  || std::strcmp(rec->name, "__setstate__") == 0);
+
         // Keep track of strdup'ed strings, and clean them up as long as the function's capsule
         // has not taken ownership yet (when `unique_rec.release()` is called).
         // Note: This cannot easily be fixed by a `unique_ptr` with custom deleter, because the
@@ -403,7 +410,14 @@ protected:
         strdup_guard guarded_strdup;
 
         /* Create copies of all referenced C-style strings */
-        rec->name = guarded_strdup(rec->name ? rec->name : "");
+        if (rec->name == nullptr) {
+            rec->name = guarded_strdup("");
+        } else if (std::strcmp(rec->name, "__setstate__[non-constructor]") == 0) {
+            // See google/pywrapcc#30094 for background.
+            rec->name = guarded_strdup("__setstate__");
+        } else {
+            rec->name = guarded_strdup(rec->name);
+        }
         if (rec->doc) {
             rec->doc = guarded_strdup(rec->doc);
         }
@@ -417,9 +431,6 @@ protected:
                 a.descr = guarded_strdup(repr(a.value).cast<std::string>().c_str());
             }
         }
-
-        rec->is_constructor = (std::strcmp(rec->name, "__init__") == 0)
-                              || (std::strcmp(rec->name, "__setstate__") == 0);
 
 #if defined(PYBIND11_DETAILED_ERROR_MESSAGES) && !defined(PYBIND11_DISABLE_NEW_STYLE_INIT_WARNING)
         if (rec->is_constructor && !rec->is_new_style_constructor) {
@@ -494,9 +505,7 @@ protected:
                     signature += rec->scope.attr("__module__").cast<std::string>() + "."
                                  + rec->scope.attr("__qualname__").cast<std::string>();
                 } else {
-                    std::string tname(t->name());
-                    detail::clean_type_id(tname);
-                    signature += tname;
+                    signature += detail::quote_cpp_type_name(detail::clean_type_id(t->name()));
                 }
             } else {
                 signature += c;
@@ -519,20 +528,11 @@ protected:
         if (rec->sibling) {
             if (PyCFunction_Check(rec->sibling.ptr())) {
                 auto *self = PyCFunction_GET_SELF(rec->sibling.ptr());
-                if (!isinstance<capsule>(self)) {
+                chain = detail::function_record_ptr_from_PyObject(self);
+                if (chain && !chain->scope.is(rec->scope)) {
+                    /* Never append a method to an overload chain of a parent class;
+                       instead, hide the parent's overloads in this case */
                     chain = nullptr;
-                } else {
-                    auto rec_capsule = reinterpret_borrow<capsule>(self);
-                    if (detail::is_function_record_capsule(rec_capsule)) {
-                        chain = rec_capsule.get_pointer<detail::function_record>();
-                        /* Never append a method to an overload chain of a parent class;
-                           instead, hide the parent's overloads in this case */
-                        if (!chain->scope.is(rec->scope)) {
-                            chain = nullptr;
-                        }
-                    } else {
-                        chain = nullptr;
-                    }
                 }
             }
             // Don't trigger for things like the default __init__, which are wrapper_descriptors
@@ -552,21 +552,14 @@ protected:
                 = reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(dispatcher));
             rec->def->ml_flags = METH_VARARGS | METH_KEYWORDS;
 
-            capsule rec_capsule(unique_rec.release(),
-                                detail::get_function_record_capsule_name(),
-                                [](void *ptr) { destruct((detail::function_record *) ptr); });
+            detail::function_record_PyTypeObject_PyType_Ready(); // Call-once initialization.
+            object py_func_rec = detail::function_record_PyObject_New();
+            ((detail::function_record_PyObject *) py_func_rec.ptr())->cpp_func_rec
+                = unique_rec.release();
             guarded_strdup.release();
 
-            object scope_module;
-            if (rec->scope) {
-                if (hasattr(rec->scope, "__module__")) {
-                    scope_module = rec->scope.attr("__module__");
-                } else if (hasattr(rec->scope, "__name__")) {
-                    scope_module = rec->scope.attr("__name__");
-                }
-            }
-
-            m_ptr = PyCFunction_NewEx(rec->def, rec_capsule.ptr(), scope_module.ptr());
+            object scope_module = detail::get_scope_module(rec->scope);
+            m_ptr = PyCFunction_NewEx(rec->def, py_func_rec.ptr(), scope_module.ptr());
             if (!m_ptr) {
                 pybind11_fail("cpp_function::cpp_function(): Could not allocate function object");
             }
@@ -595,9 +588,9 @@ protected:
                 // chain.
                 chain_start = rec;
                 rec->next = chain;
-                auto rec_capsule
-                    = reinterpret_borrow<capsule>(((PyCFunctionObject *) m_ptr)->m_self);
-                rec_capsule.set_pointer(unique_rec.release());
+                auto *py_func_rec
+                    = (detail::function_record_PyObject *) PyCFunction_GET_SELF(m_ptr);
+                py_func_rec->cpp_func_rec = unique_rec.release();
                 guarded_strdup.release();
             } else {
                 // Or end of chain (normal behavior)
@@ -671,6 +664,8 @@ protected:
         }
     }
 
+    friend void detail::function_record_PyTypeObject_methods::tp_dealloc_impl(PyObject *);
+
     /// When a cpp_function is GCed, release any memory allocated by pybind11
     static void destruct(detail::function_record *rec, bool free_strings = true) {
 // If on Python 3.9, check the interpreter "MICRO" (patch) version.
@@ -720,13 +715,11 @@ protected:
     /// Main dispatch logic for calls to functions bound using pybind11
     static PyObject *dispatcher(PyObject *self, PyObject *args_in, PyObject *kwargs_in) {
         using namespace detail;
-        assert(isinstance<capsule>(self));
+        const function_record *overloads = function_record_ptr_from_PyObject(self);
+        assert(overloads != nullptr);
 
         /* Iterator over the list of potentially admissible overloads */
-        const function_record *overloads = reinterpret_cast<function_record *>(
-                                  PyCapsule_GetPointer(self, get_function_record_capsule_name())),
-                              *current_overload = overloads;
-        assert(overloads != nullptr);
+        const function_record *current_overload = overloads;
 
         /* Need to know how many arguments + keyword arguments there are to pick the right
            overload */
@@ -910,7 +903,7 @@ protected:
                             break;
                         }
 
-                        if (value) {
+                        if (value || arg_rec.value_is_nullptr) {
                             // If we're at the py::args index then first insert a stub for it to be
                             // replaced later
                             if (func.has_args && call.args.size() == func.nargs_pos) {
@@ -1198,6 +1191,49 @@ protected:
     }
 };
 
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+PYBIND11_NAMESPACE_BEGIN(function_record_PyTypeObject_methods)
+
+// This implementation needs the definition of `class cpp_function`.
+inline void tp_dealloc_impl(PyObject *self) {
+    auto *py_func_rec = (function_record_PyObject *) self;
+    cpp_function::destruct(py_func_rec->cpp_func_rec);
+    py_func_rec->cpp_func_rec = nullptr;
+}
+
+PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
+
+/// Instance creation function for all pybind11 types. It only allocates space for the
+/// C++ object, but doesn't call the constructor -- an `__init__` function must do that.
+extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *) {
+#if defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)
+    if (type->tp_init != pybind11_object_init && type->tp_init != tp_init_with_safety_checks
+        && derived_tp_init_registry()->count(type) == 0) {
+        weakref((PyObject *) type, cpp_function([type](handle wr) {
+                    auto num_erased = derived_tp_init_registry()->erase(type);
+                    if (num_erased != 1) {
+                        pybind11_fail("FATAL: Internal consistency check failed at " __FILE__
+                                      ":" PYBIND11_TOSTRING(__LINE__) ": num_erased="
+                                      + std::to_string(num_erased));
+                    }
+                    wr.dec_ref();
+                }))
+            .release();
+        (*derived_tp_init_registry())[type] = type->tp_init;
+        type->tp_init = tp_init_with_safety_checks;
+    }
+#endif // PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT
+    return make_new_instance(type);
+}
+
+template <>
+struct handle_type_name<cpp_function> {
+    static constexpr auto name = const_name("Callable");
+};
+
+PYBIND11_NAMESPACE_END(detail)
+
 /// Wrapper for Python extension modules
 class module_ : public object {
 public:
@@ -1329,6 +1365,15 @@ public:
         return *this;
     }
 };
+
+PYBIND11_NAMESPACE_BEGIN(detail)
+
+template <>
+struct handle_type_name<module_> {
+    static constexpr auto name = const_name("module");
+};
+
+PYBIND11_NAMESPACE_END(detail)
 
 // When inside a namespace (or anywhere as long as it's not the first item on a line),
 // C++20 allows "module" to be used. This is provided for backward compatibility, and for
@@ -1831,7 +1876,6 @@ public:
         record.type_align = alignof(conditional_t<has_alias, type_alias, type> &);
         record.holder_size = sizeof(holder_type);
         record.init_instance = init_instance;
-        record.dealloc = dealloc;
 
         // A more fitting name would be uses_unique_ptr_holder.
         record.default_holder = detail::is_instantiation<std::unique_ptr, holder_type>::value;
@@ -1843,6 +1887,12 @@ public:
 
         /* Process optional arguments, if any */
         process_attributes<Extra...>::init(extra..., &record);
+
+        if (record.release_gil_before_calling_cpp_dtor) {
+            record.dealloc = dealloc_release_gil_before_calling_cpp_dtor;
+        } else {
+            record.dealloc = dealloc_without_manipulating_gil;
+        }
 
         generic_type_initialize(record);
 
@@ -2193,15 +2243,14 @@ private:
             inst, holder_ptr);
     }
 
-    /// Deallocates an instance; via holder, if constructed; otherwise via operator delete.
-    static void dealloc(detail::value_and_holder &v_h) {
-        // We could be deallocating because we are cleaning up after a Python exception.
-        // If so, the Python error indicator will be set. We need to clear that before
-        // running the destructor, in case the destructor code calls more Python.
-        // If we don't, the Python API will exit with an exception, and pybind11 will
-        // throw error_already_set from the C++ destructor which is forbidden and triggers
-        // std::terminate().
-        error_scope scope;
+    // Deallocates an instance; via holder, if constructed; otherwise via operator delete.
+    // NOTE: The Python error indicator needs to cleared BEFORE this function is called.
+    // This is because we could be deallocating while cleaning up after a Python exception.
+    // If the error indicator is not cleared but the C++ destructor code makes Python C API
+    // calls, those calls are likely to generate a new exception, and pybind11 will then
+    // throw `error_already_set` from the C++ destructor. This is forbidden and will
+    // trigger std::terminate().
+    static void dealloc_impl(detail::value_and_holder &v_h) {
         if (v_h.holder_constructed()) {
             v_h.holder<holder_type>().~holder_type();
             v_h.set_holder_constructed(false);
@@ -2210,6 +2259,32 @@ private:
                 v_h.value_ptr<type>(), v_h.type->type_size, v_h.type->type_align);
         }
         v_h.value_ptr() = nullptr;
+    }
+
+    static void dealloc_without_manipulating_gil(detail::value_and_holder &v_h) {
+        error_scope scope;
+        dealloc_impl(v_h);
+    }
+
+    static void dealloc_release_gil_before_calling_cpp_dtor(detail::value_and_holder &v_h) {
+        error_scope scope;
+        // Intentionally not using `gil_scoped_release` because the non-simple
+        // version unconditionally calls `get_internals()`.
+        // `Py_BEGIN_ALLOW_THREADS`, `Py_END_ALLOW_THREADS` cannot be used
+        // because those macros include `{` and `}`.
+        PyThreadState *py_ts = PyEval_SaveThread();
+        try {
+            dealloc_impl(v_h);
+        } catch (...) {
+            // This code path is expected to be unreachable unless there is a
+            // bug in pybind11 itself.
+            // An alternative would be to mark this function, or
+            // `dealloc_impl()`, with `nothrow`, but that would be a subtle
+            // behavior change and could make debugging more difficult.
+            PyEval_RestoreThread(py_ts);
+            throw;
+        }
+        PyEval_RestoreThread(py_ts);
     }
 
     static detail::function_record *get_function_record(handle h) {
@@ -2222,14 +2297,7 @@ private:
         if (!func_self) {
             throw error_already_set();
         }
-        if (!isinstance<capsule>(func_self)) {
-            return nullptr;
-        }
-        auto cap = reinterpret_borrow<capsule>(func_self);
-        if (!detail::is_function_record_capsule(cap)) {
-            return nullptr;
-        }
-        return cap.get_pointer<detail::function_record>();
+        return detail::function_record_ptr_from_PyObject(func_self.ptr());
     }
 };
 
@@ -2902,6 +2970,11 @@ public:
 };
 
 PYBIND11_NAMESPACE_BEGIN(detail)
+
+template <>
+struct handle_type_name<exception<void>> {
+    static constexpr auto name = const_name("Exception");
+};
 
 // Helper function for register_exception and register_local_exception
 template <typename CppException>

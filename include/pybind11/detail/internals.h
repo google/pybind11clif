@@ -48,9 +48,14 @@ inline PyObject *make_object_base_type(PyTypeObject *metaclass);
 // `Py_LIMITED_API` anyway.
 #    if PYBIND11_INTERNALS_VERSION > 4
 #        define PYBIND11_TLS_KEY_REF Py_tss_t &
-#        if defined(__GNUC__) && !defined(__INTEL_COMPILER)
-// Clang on macOS warns due to `Py_tss_NEEDS_INIT` not specifying an initializer
-// for every field.
+#        if defined(__clang__)
+#            define PYBIND11_TLS_KEY_INIT(var)                                                    \
+                _Pragma("clang diagnostic push")                                         /**/     \
+                    _Pragma("clang diagnostic ignored \"-Wmissing-field-initializers\"") /**/     \
+                    Py_tss_t var                                                                  \
+                    = Py_tss_NEEDS_INIT;                                                          \
+                _Pragma("clang diagnostic pop")
+#        elif defined(__GNUC__) && !defined(__INTEL_COMPILER)
 #            define PYBIND11_TLS_KEY_INIT(var)                                                    \
                 _Pragma("GCC diagnostic push")                                         /**/       \
                     _Pragma("GCC diagnostic ignored \"-Wmissing-field-initializers\"") /**/       \
@@ -143,6 +148,7 @@ struct internals {
 #    if PYBIND11_INTERNALS_VERSION > 4
     // Note that we have to use a std::string to allocate memory to ensure a unique address
     // We want unique addresses since we use pointer equality to compare function records
+    // OBSOLETE: google/pywrapcc#30099
     std::string function_record_capsule_name = internals_function_record_capsule_name;
 #    endif
 

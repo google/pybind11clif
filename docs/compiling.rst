@@ -241,7 +241,7 @@ extension module can be created with just a few lines of code:
 
 .. code-block:: cmake
 
-    cmake_minimum_required(VERSION 3.5...3.26)
+    cmake_minimum_required(VERSION 3.5...3.29)
     project(example LANGUAGES CXX)
 
     add_subdirectory(pybind11)
@@ -498,7 +498,7 @@ You can use these targets to build complex applications. For example, the
 
 .. code-block:: cmake
 
-    cmake_minimum_required(VERSION 3.5...3.26)
+    cmake_minimum_required(VERSION 3.5...3.29)
     project(example LANGUAGES CXX)
 
     find_package(pybind11 REQUIRED)  # or add_subdirectory(pybind11)
@@ -556,7 +556,7 @@ information about usage in C++, see :doc:`/advanced/embedding`.
 
 .. code-block:: cmake
 
-    cmake_minimum_required(VERSION 3.5...3.26)
+    cmake_minimum_required(VERSION 3.5...3.29)
     project(example LANGUAGES CXX)
 
     find_package(pybind11 REQUIRED)  # or add_subdirectory(pybind11)
@@ -639,3 +639,11 @@ cross-project dependency management. Additionally, it is able to autogenerate
 customizable pybind11-based wrappers by parsing C++ header files.
 
 .. [robotpy-build] https://robotpy-build.readthedocs.io
+
+[litgen]_ is an automatic python bindings generator with a focus on generating
+documented and discoverable bindings: bindings will nicely reproduce the documentation
+found in headers. It is is based on srcML (srcml.org), a highly scalable, multi-language
+parsing tool with a developer centric approach. The API that you want to expose to python
+must be C++14 compatible (but your implementation can use more modern constructs).
+
+.. [litgen] https://pthom.github.io/litgen

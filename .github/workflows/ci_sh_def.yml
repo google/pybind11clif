@@ -85,10 +85,9 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
-        allow-prereleases: true
 
     - name: Setup Boost (Linux)
       # Can't use boost + define _
@@ -100,11 +99,11 @@ jobs:
       run: brew install boost
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Cache wheels
       if: runner.os == 'macOS'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         # This path is specific to macOS - we really only need it for PyPy NumPy wheels
         # See https://github.com/actions/cache/blob/master/examples.md#python---pip
@@ -122,12 +121,15 @@ jobs:
       run: python -m pip install pytest-github-actions-annotate-failures
 
     # First build - C++11 mode and inplace
-    # More-or-less randomly adding -DPYBIND11_SIMPLE_GIL_MANAGEMENT=ON here.
+    # More-or-less randomly adding -DPYBIND11_SIMPLE_GIL_MANAGEMENT=ON here
+    # (same for PYBIND11_NUMPY_1_ONLY, but requires a NumPy 1.x at runtime).
     - name: Configure C++11 ${{ matrix.args }}
       run: >
         cmake -S . -B .
         -DPYBIND11_WERROR=ON
+        -DPYBIND11_DISABLE_HANDLE_TYPE_NAME_DEFAULT_IMPLEMENTATION=ON
         -DPYBIND11_SIMPLE_GIL_MANAGEMENT=ON
+        -DPYBIND11_NUMPY_1_ONLY=ON
         -DDOWNLOAD_CATCH=ON
         -DDOWNLOAD_EIGEN=ON
         -DCMAKE_CXX_STANDARD=11
@@ -153,11 +155,13 @@ jobs:
 
     # Second build - C++17 mode and in a build directory
     # More-or-less randomly adding -DPYBIND11_SIMPLE_GIL_MANAGEMENT=OFF here.
+    # (same for PYBIND11_NUMPY_1_ONLY, but requires a NumPy 1.x at runtime).
     - name: Configure C++17
       run: >
         cmake -S . -B build2
         -DPYBIND11_WERROR=ON
         -DPYBIND11_SIMPLE_GIL_MANAGEMENT=OFF
+        -DPYBIND11_NUMPY_1_ONLY=ON
         -DDOWNLOAD_CATCH=ON
         -DDOWNLOAD_EIGEN=ON
         -DCMAKE_CXX_STANDARD=17
@@ -225,17 +229,17 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup Python ${{ matrix.python-version }} (deadsnakes)
-      uses: deadsnakes/action@v3.0.1
+      uses: deadsnakes/action@v3.1.0
       with:
         python-version: ${{ matrix.python-version }}
         debug: ${{ matrix.python-debug }}
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Valgrind cache
       if: matrix.valgrind
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: cache-valgrind
       with:
         path: valgrind
@@ -503,7 +507,7 @@ jobs:
       run: python3 -m pip install --upgrade pip
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Configure
       shell: bash
@@ -550,8 +554,6 @@ jobs:
   # Testing on ICC using the oneAPI apt repo
   icc:
     runs-on: ubuntu-20.04
-    strategy:
-      fail-fast: false
 
     name: "🐍 3 • ICC latest • x64"
 
@@ -685,6 +687,11 @@ jobs:
       run: |
         python3 -m pip install cmake -r tests/requirements.txt
 
+    - name: Ensure NumPy 2 is used (required Python >= 3.9)
+      if: matrix.container == 'almalinux:9'
+      run: |
+        python3 -m pip install 'numpy>=2.0.0b1' 'scipy>=1.13.0rc1'
+
     - name: Configure
       shell: bash
       run: >
@@ -763,7 +770,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: "3.x"
 
@@ -816,16 +823,16 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
         architecture: x86
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Prepare MSVC
-      uses: ilammy/msvc-dev-cmd@v1.12.1
+      uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: x86
 
@@ -870,16 +877,16 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
         architecture: x86
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Prepare MSVC
-      uses: ilammy/msvc-dev-cmd@v1.12.1
+      uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: x86
 
@@ -919,16 +926,18 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
 
     - name: Prepare env
+      # Ensure use of NumPy 2 (via NumPy nightlies but can be changed soon)
       run: |
         python3 -m pip install -r tests/requirements.txt
+        python3 -m pip install 'numpy>=2.0.0b1' 'scipy>=1.13.0rc1'
 
     - name: Update CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+      uses: jwlawson/actions-setup-cmake@v2.0
 
     - name: Configure C++20
       run: >
@@ -988,7 +997,6 @@ jobs:
           mingw-w64-${{matrix.env}}-gcc
           mingw-w64-${{matrix.env}}-python-pip
           mingw-w64-${{matrix.env}}-python-numpy
-          mingw-w64-${{matrix.env}}-python-scipy
           mingw-w64-${{matrix.env}}-cmake
           mingw-w64-${{matrix.env}}-make
           mingw-w64-${{matrix.env}}-python-pytest
@@ -996,12 +1004,24 @@ jobs:
           mingw-w64-${{matrix.env}}-boost
           mingw-w64-${{matrix.env}}-catch
 
+    - uses: msys2/setup-msys2@v2
+      if: matrix.sys == 'mingw64'
+      with:
+        msystem: ${{matrix.sys}}
+        install: >-
+          git
+          mingw-w64-${{matrix.env}}-python-scipy
+
     - uses: actions/checkout@v4
 
     - name: Configure C++11
       # LTO leads to many undefined reference like
       # `pybind11::detail::function_call::function_call(pybind11::detail::function_call&&)
-      run: cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=11 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT" -S . -B build
+      run: >-
+        cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=11 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON
+        -DPYTHON_EXECUTABLE=$(python -c "import sys; print(sys.executable)")
+        -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT"
+        -S . -B build
 
     - name: Build C++11
       run: cmake --build build -j 2
@@ -1019,7 +1039,11 @@ jobs:
       run: git clean -fdx
 
     - name: Configure C++14
-      run: cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=14 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT" -S . -B build2
+      run: >-
+        cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=14 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON
+        -DPYTHON_EXECUTABLE=$(python -c "import sys; print(sys.executable)")
+        -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT"
+        -S . -B build2
 
     - name: Build C++14
       run: cmake --build build2 -j 2
@@ -1037,7 +1061,11 @@ jobs:
       run: git clean -fdx
 
     - name: Configure C++17
-      run: cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=17 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT" -S . -B build3
+      run: >-
+        cmake -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=17 -DPYBIND11_WERROR=ON -DDOWNLOAD_CATCH=ON
+        -DPYTHON_EXECUTABLE=$(python -c "import sys; print(sys.executable)")
+        -DCMAKE_CXX_FLAGS="-DPYBIND11_USE_SMART_HOLDER_AS_DEFAULT"
+        -S . -B build3
 
     - name: Build C++17
       run: cmake --build build3 -j 2
@@ -1073,12 +1101,12 @@ jobs:
         uses: egor-tensin/setup-clang@v1
 
       - name: Setup Python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
       - name: Update CMake
-        uses: jwlawson/actions-setup-cmake@v1.14
+        uses: jwlawson/actions-setup-cmake@v2.0
 
       - name: Install ninja-build tool
         uses: seanmiddleditch/gha-setup-ninja@v4
@@ -1149,7 +1177,7 @@ jobs:
         run: clang++ --version
 
       - name: Update CMake
-        uses: jwlawson/actions-setup-cmake@v1.14
+        uses: jwlawson/actions-setup-cmake@v2.0
 
       - name: Run pip installs
         run: |
