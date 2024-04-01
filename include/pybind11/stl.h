@@ -633,8 +633,8 @@ struct variant_caster<V<Ts...>> {
 
     using Type = V<Ts...>;
     PYBIND11_TYPE_CASTER_RVPP(Type,
-                              const_name("Union[") + detail::concat(make_caster<Ts>::name...)
-                                  + const_name("]"));
+                              ::pybind11::detail::const_name("Union[")
+                                  + detail::concat(make_caster<Ts>::name...) + const_name("]"));
 };
 
 #if defined(PYBIND11_HAS_VARIANT)
