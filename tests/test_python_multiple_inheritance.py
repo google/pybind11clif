@@ -204,21 +204,16 @@ def NOtest_PPPCCC1():
     ("pcd_type", "cppdrvd2"), [(PCD0, "CppDrvd20"), (PCD1, "CppDrvd21")]
 )
 def test_PCD(pcd_type, cppdrvd2):
+    if m.if_defined_PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS:
+        pytest.skip(
+            "PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS is defined"
+        )
     # This escapes all_type_info_check_for_divergence() because CppBase does not appear in bases.
     with pytest.raises(
         TypeError,
         match=cppdrvd2 + r"\.__init__\(\) must be called when overriding __init__$",
     ):
         pcd_type(11)
-
-
-def test_PCD1():
-    # This escapes all_type_info_check_for_divergence() because CppBase0 does not appear in bases.
-    with pytest.raises(
-        TypeError,
-        match=r"CppDrvd21\.__init__\(\) must be called when overriding __init__$",
-    ):
-        PCD1(11)
 
 
 @pytest.mark.parametrize(
