@@ -838,7 +838,7 @@ protected:
                     call.args.push_back(arg);
                     call.args_policies.emplace_back(
                         arg_rec ? from_python_policies(
-                            arg_rec->policies.rvpp, arg_rec->policies.convert, false)
+                                      arg_rec->policies.rvpp, arg_rec->policies.convert, false)
                                 : from_python_policies(true, false));
                 }
                 if (bad_arg) {

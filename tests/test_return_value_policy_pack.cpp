@@ -243,8 +243,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     static constexpr auto rvpb = py::return_value_policy::_return_as_bytes;
 
     m.def("return_tuple_str_str", []() { return return_pair_string(); });
-    m.def(
-        "return_tuple_bytes_bytes", []() { return return_pair_string(); }, rvpb);
+    m.def("return_tuple_bytes_bytes", []() { return return_pair_string(); }, rvpb);
     m.def(
         "return_tuple_str_bytes",
         []() { return return_pair_string(); },
@@ -272,8 +271,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     });
 
     m.def("return_nested_tuple_str", []() { return return_nested_pair_string(); });
-    m.def(
-        "return_nested_tuple_bytes", []() { return return_nested_pair_string(); }, rvpb);
+    m.def("return_nested_tuple_bytes", []() { return return_nested_pair_string(); }, rvpb);
     m.def(
         "return_nested_tuple_str_bytes_bytes_str",
         []() { return return_nested_pair_string(); },
@@ -284,8 +282,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
         py::return_value_policy_pack({{rvpb, rvpc}, {rvpc, rvpb}}));
 
     m.def("return_dict_str_str", []() { return return_map_string(); });
-    m.def(
-        "return_dict_bytes_bytes", []() { return return_map_string(); }, rvpb);
+    m.def("return_dict_bytes_bytes", []() { return return_map_string(); }, rvpb);
     m.def(
         "return_dict_str_bytes",
         []() { return return_map_string(); },
