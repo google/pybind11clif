@@ -33,7 +33,7 @@ class PCExplicitInitMissingSuperB0(m.CppBase0):
         del value
 
 
-class PPPCCC0(PPCC0, m.CppDrvd20):
+class PPPCCC0(PPCC0, m.CppDrvdB0):
     pass
 
 
@@ -41,7 +41,7 @@ class PC10(m.CppDrvd0):
     pass
 
 
-class PC20(m.CppDrvd20):
+class PC20(m.CppDrvdB0):
     pass
 
 
@@ -84,7 +84,7 @@ class PCExplicitInitMissingSuperB1(m.CppBase1):
         del value
 
 
-class PPPCCC1(PPCC1, m.CppDrvd21):
+class PPPCCC1(PPCC1, m.CppDrvdB1):
     pass
 
 
@@ -92,7 +92,7 @@ class PC11(m.CppDrvd1):
     pass
 
 
-class PC21(m.CppDrvd21):
+class PC21(m.CppDrvdB1):
     pass
 
 
@@ -187,7 +187,7 @@ def NOtest_PPPCCC0():
     # what():  TypeError: bases include diverging derived types:
     #     base=pybind11_tests.python_multiple_inheritance.CppBase0,
     #     derived1=pybind11_tests.python_multiple_inheritance.CppDrvd0,
-    #     derived2=pybind11_tests.python_multiple_inheritance.CppDrvd20
+    #     derived2=pybind11_tests.python_multiple_inheritance.CppDrvdB0
     PPPCCC0(11)
 
 
@@ -196,14 +196,14 @@ def NOtest_PPPCCC1():
     # what():  TypeError: bases include diverging derived types:
     #     base=pybind11_tests.python_multiple_inheritance.CppBase1,
     #     derived1=pybind11_tests.python_multiple_inheritance.CppDrvd1,
-    #     derived2=pybind11_tests.python_multiple_inheritance.CppDrvd21
+    #     derived2=pybind11_tests.python_multiple_inheritance.CppDrvdB1
     PPPCCC1(11)
 
 
 @pytest.mark.parametrize(
-    ("pcd_type", "cppdrvd2"), [(PCD0, "CppDrvd20"), (PCD1, "CppDrvd21")]
+    ("pcd_type", "cppdrvdb"), [(PCD0, "CppDrvdB0"), (PCD1, "CppDrvdB1")]
 )
-def test_PCD(pcd_type, cppdrvd2):
+def test_PCD(pcd_type, cppdrvdb):
     if m.if_defined_PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS:
         pytest.skip(
             "PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS is defined"
@@ -211,7 +211,7 @@ def test_PCD(pcd_type, cppdrvd2):
     # This escapes all_type_info_check_for_divergence() because CppBase does not appear in bases.
     with pytest.raises(
         TypeError,
-        match=cppdrvd2 + r"\.__init__\(\) must be called when overriding __init__$",
+        match=cppdrvdb + r"\.__init__\(\) must be called when overriding __init__$",
     ):
         pcd_type(11)
 
