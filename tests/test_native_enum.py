@@ -46,34 +46,25 @@ MEMBER_DOC_MEMBERS = (
     ("mem2", 2),
 )
 
-
-@pytest.mark.parametrize(
-    "enum_type",
-    [
-        m.smallenum,
-        m.color,
-        m.altitude,
-        m.export_values,
-        m.member_doc,
-        m.class_with_enum.in_class,
-    ],
+ENUM_TYPES_AND_MEMBERS = (
+    (m.smallenum, SMALLENUM_MEMBERS),
+    (m.color, COLOR_MEMBERS),
+    (m.altitude, ALTITUDE_MEMBERS),
+    (m.export_values, EXPORT_VALUES_MEMBERS),
+    (m.member_doc, MEMBER_DOC_MEMBERS),
+    (m.class_with_enum.in_class, CLASS_WITH_ENUM_IN_CLASS_MEMBERS),
 )
+
+ENUM_TYPES = [_[0] for _ in ENUM_TYPES_AND_MEMBERS]
+
+
+@pytest.mark.parametrize("enum_type", ENUM_TYPES)
 def test_enum_type(enum_type):
     assert isinstance(enum_type, enum.EnumMeta)
     assert enum_type.__module__ == m.__name__
 
 
-@pytest.mark.parametrize(
-    ("enum_type", "members"),
-    [
-        (m.smallenum, SMALLENUM_MEMBERS),
-        (m.color, COLOR_MEMBERS),
-        (m.altitude, ALTITUDE_MEMBERS),
-        (m.export_values, EXPORT_VALUES_MEMBERS),
-        (m.member_doc, MEMBER_DOC_MEMBERS),
-        (m.class_with_enum.in_class, CLASS_WITH_ENUM_IN_CLASS_MEMBERS),
-    ],
-)
+@pytest.mark.parametrize(("enum_type", "members"), ENUM_TYPES_AND_MEMBERS)
 def test_enum_members(enum_type, members):
     for name, value in members:
         assert enum_type[name].value == value
