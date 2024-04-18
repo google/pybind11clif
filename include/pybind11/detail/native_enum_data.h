@@ -88,7 +88,7 @@ PYBIND11_NAMESPACE_END(cross_extension_shared_states)
 
 PYBIND11_NAMESPACE_BEGIN(detail)
 
-inline void native_enum_add_to_parent(object parent, const detail::native_enum_data &data) {
+inline void native_enum_add_to_parent(const object &parent, const detail::native_enum_data &data) {
     data.disarm_correct_use_check();
     if (hasattr(parent, data.enum_name)) {
         pybind11_fail("pybind11::native_enum<...>(\"" + data.enum_name_encoded
