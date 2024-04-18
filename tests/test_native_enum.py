@@ -1,4 +1,5 @@
 import enum
+import pickle
 import re
 
 import pytest
@@ -68,6 +69,21 @@ def test_enum_type(enum_type):
 def test_enum_members(enum_type, members):
     for name, value in members:
         assert enum_type[name].value == value
+
+
+@pytest.mark.parametrize(("enum_type", "members"), ENUM_TYPES_AND_MEMBERS)
+def test_pickle_roundtrip(enum_type, members):
+    for name, _ in members:
+        orig = enum_type[name]
+        if enum_type is m.class_with_enum.in_class:
+            # This is a general pickle limitation.
+            with pytest.raises(pickle.PicklingError):
+                pickle.dumps(orig)
+        else:
+            # This only works if __module__ is correct.
+            serialized = pickle.dumps(orig)
+            restored = pickle.loads(serialized)
+            assert restored == orig
 
 
 def test_export_values():
