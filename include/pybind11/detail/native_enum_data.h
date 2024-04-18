@@ -102,11 +102,9 @@ inline void native_enum_add_to_parent(object parent, const detail::native_enum_d
     }
     auto py_enum_type = enum_module.attr(data.use_int_enum ? "IntEnum" : "Enum");
     auto py_enum = py_enum_type(data.enum_name, data.members);
-    if (hasattr(parent, "__module__")) {
-        // Enum nested in class:
-        py_enum.attr("__module__") = parent.attr("__module__");
-    } else {
-        py_enum.attr("__module__") = parent;
+    object module_name = get_module_name_if_available(parent);
+    if (module_name) {
+        py_enum.attr("__module__") = module_name;
     }
     parent.attr(data.enum_name) = py_enum;
     if (data.export_values_flag) {
