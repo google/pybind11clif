@@ -36,7 +36,7 @@ public:
     std::string was_not_added_error_message() const {
         return "`native_enum` was not added to any module."
                " Use e.g. `m += native_enum<...>(\""
-               + enum_name_encoded + "\", py::native_enum_kind::IntEnum)` to fix.";
+               + enum_name_encoded + "\", ...)` to fix.";
     }
 
 #if !defined(NDEBUG)

@@ -154,7 +154,7 @@ def test_native_enum_data_was_not_added_error_message():
     msg = m.native_enum_data_was_not_added_error_message("Fake")
     assert msg == (
         "`native_enum` was not added to any module."
-        ' Use e.g. `m += native_enum<...>("Fake", py::native_enum_kind::IntEnum)` to fix.'
+        ' Use e.g. `m += native_enum<...>("Fake", ...)` to fix.'
     )
 
 
