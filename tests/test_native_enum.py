@@ -1,4 +1,5 @@
 import enum
+import pickle
 import re
 
 import pytest
@@ -30,6 +31,11 @@ ALTITUDE_MEMBERS = (
     ("low", "l"),
 )
 
+CLASS_WITH_ENUM_IN_CLASS_MEMBERS = (
+    ("one", 0),
+    ("two", 1),
+)
+
 EXPORT_VALUES_MEMBERS = (
     ("exv0", 0),
     ("exv1", 1),
@@ -41,27 +47,43 @@ MEMBER_DOC_MEMBERS = (
     ("mem2", 2),
 )
 
-
-@pytest.mark.parametrize(
-    "enum_type", [m.smallenum, m.color, m.altitude, m.export_values, m.member_doc]
+ENUM_TYPES_AND_MEMBERS = (
+    (m.smallenum, SMALLENUM_MEMBERS),
+    (m.color, COLOR_MEMBERS),
+    (m.altitude, ALTITUDE_MEMBERS),
+    (m.export_values, EXPORT_VALUES_MEMBERS),
+    (m.member_doc, MEMBER_DOC_MEMBERS),
+    (m.class_with_enum.in_class, CLASS_WITH_ENUM_IN_CLASS_MEMBERS),
 )
+
+ENUM_TYPES = [_[0] for _ in ENUM_TYPES_AND_MEMBERS]
+
+
+@pytest.mark.parametrize("enum_type", ENUM_TYPES)
 def test_enum_type(enum_type):
     assert isinstance(enum_type, enum.EnumMeta)
+    assert enum_type.__module__ == m.__name__
 
 
-@pytest.mark.parametrize(
-    ("enum_type", "members"),
-    [
-        (m.smallenum, SMALLENUM_MEMBERS),
-        (m.color, COLOR_MEMBERS),
-        (m.altitude, ALTITUDE_MEMBERS),
-        (m.export_values, EXPORT_VALUES_MEMBERS),
-        (m.member_doc, MEMBER_DOC_MEMBERS),
-    ],
-)
+@pytest.mark.parametrize(("enum_type", "members"), ENUM_TYPES_AND_MEMBERS)
 def test_enum_members(enum_type, members):
     for name, value in members:
         assert enum_type[name].value == value
+
+
+@pytest.mark.parametrize(("enum_type", "members"), ENUM_TYPES_AND_MEMBERS)
+def test_pickle_roundtrip(enum_type, members):
+    for name, _ in members:
+        orig = enum_type[name]
+        if enum_type is m.class_with_enum.in_class:
+            # This is a general pickle limitation.
+            with pytest.raises(pickle.PicklingError):
+                pickle.dumps(orig)
+        else:
+            # This only works if __module__ is correct.
+            serialized = pickle.dumps(orig)
+            restored = pickle.loads(serialized)
+            assert restored == orig
 
 
 def test_export_values():
@@ -74,11 +96,6 @@ def test_member_doc():
     assert m.member_doc.mem0.__doc__ == "docA"
     assert m.member_doc.mem1.__doc__ == pure_native.mem.__doc__
     assert m.member_doc.mem2.__doc__ == "docC"
-
-
-def test_class_with_enum():
-    for value, name in enumerate(("one", "two")):
-        assert m.class_with_enum.in_class[name].value == value
 
 
 def test_pybind11_isinstance_color():
