@@ -74,35 +74,36 @@ TEST_SUBMODULE(native_enum, m) {
     m.attr("native_enum_type_map_abi_id_c_str")
         = py::cross_extension_shared_states::native_enum_type_map::abi_id();
 
-    m += py::native_enum<smallenum>("smallenum")
+    m += py::native_enum<smallenum>("smallenum", py::native_enum_kind::IntEnum)
              .value("a", smallenum::a)
              .value("b", smallenum::b)
              .value("c", smallenum::c);
 
-    m += py::native_enum<color>("color")
+    m += py::native_enum<color>("color", py::native_enum_kind::IntEnum)
              .value("red", color::red)
              .value("yellow", color::yellow)
              .value("green", color::green)
              .value("blue", color::blue);
 
-    m += py::native_enum<altitude>("altitude")
+    m += py::native_enum<altitude>("altitude", py::native_enum_kind::Enum)
              .value("high", altitude::high)
              .value("low", altitude::low);
 
-    m += py::native_enum<export_values>("export_values")
+    m += py::native_enum<export_values>("export_values", py::native_enum_kind::IntEnum)
              .value("exv0", export_values::exv0)
              .value("exv1", export_values::exv1)
              .export_values();
 
-    m += py::native_enum<member_doc>("member_doc")
+    m += py::native_enum<member_doc>("member_doc", py::native_enum_kind::IntEnum)
              .value("mem0", member_doc::mem0, "docA")
              .value("mem1", member_doc::mem1)
              .value("mem2", member_doc::mem2, "docC");
 
     py::class_<class_with_enum> py_class_with_enum(m, "class_with_enum");
-    py_class_with_enum += py::native_enum<class_with_enum::in_class>("in_class")
-                              .value("one", class_with_enum::in_class::one)
-                              .value("two", class_with_enum::in_class::two);
+    py_class_with_enum
+        += py::native_enum<class_with_enum::in_class>("in_class", py::native_enum_kind::IntEnum)
+               .value("one", class_with_enum::in_class::one)
+               .value("two", class_with_enum::in_class::two);
 
     m.def("isinstance_color", [](const py::object &obj) { return py::isinstance<color>(obj); });
 
@@ -136,28 +137,33 @@ TEST_SUBMODULE(native_enum, m) {
 
     m.def("native_enum_ctor_malformed_utf8", [](const char *malformed_utf8) {
         enum fake { x };
-        py::native_enum<fake>{malformed_utf8};
+        py::native_enum<fake>{malformed_utf8, py::native_enum_kind::IntEnum};
     });
 
     m.def("native_enum_value_malformed_utf8", [](const char *malformed_utf8) {
         enum fake { x };
-        py::native_enum<fake>("fake").value(malformed_utf8, fake::x);
+        py::native_enum<fake>("fake", py::native_enum_kind::IntEnum)
+            .value(malformed_utf8, fake::x);
     });
 
     m.def("double_registration_native_enum", [](py::module_ m) {
         enum fake { x };
-        m += py::native_enum<fake>("fake_double_registration_native_enum").value("x", fake::x);
-        py::native_enum<fake>("fake_double_registration_native_enum");
+        m += py::native_enum<fake>("fake_double_registration_native_enum",
+                                   py::native_enum_kind::IntEnum)
+                 .value("x", fake::x);
+        py::native_enum<fake>("fake_double_registration_native_enum", py::native_enum_kind::Enum);
     });
 
     m.def("native_enum_name_clash", [](py::module_ m) {
         enum fake { x };
-        m += py::native_enum<fake>("fake_native_enum_name_clash").value("x", fake::x);
+        m += py::native_enum<fake>("fake_native_enum_name_clash", py::native_enum_kind::IntEnum)
+                 .value("x", fake::x);
     });
 
     m.def("native_enum_value_name_clash", [](py::module_ m) {
         enum fake { x };
-        m += py::native_enum<fake>("fake_native_enum_value_name_clash")
+        m += py::native_enum<fake>("fake_native_enum_value_name_clash",
+                                   py::native_enum_kind::IntEnum)
                  .value("fake_native_enum_value_name_clash_x", fake::x)
                  .export_values();
     });
@@ -165,19 +171,23 @@ TEST_SUBMODULE(native_enum, m) {
     m.def("double_registration_enum_before_native_enum", [](const py::module_ &m) {
         enum fake { x };
         py::enum_<fake>(m, "fake_enum_first").value("x", fake::x);
-        py::native_enum<fake>("fake_enum_first").value("x", fake::x);
+        py::native_enum<fake>("fake_enum_first", py::native_enum_kind::IntEnum)
+            .value("x", fake::x);
     });
 
     m.def("double_registration_native_enum_before_enum", [](py::module_ m) {
         enum fake { x };
-        m += py::native_enum<fake>("fake_native_enum_first").value("x", fake::x);
+        m += py::native_enum<fake>("fake_native_enum_first", py::native_enum_kind::IntEnum)
+                 .value("x", fake::x);
         py::enum_<fake>(m, "name_must_be_different_to_reach_desired_code_path");
     });
 
 #if defined(PYBIND11_NEGATE_THIS_CONDITION_FOR_LOCAL_TESTING) && !defined(NDEBUG)
     m.def("native_enum_correct_use_failure", []() {
         enum fake { x };
-        py::native_enum<fake>("fake_native_enum_correct_use_failure").value("x", fake::x);
+        py::native_enum<fake>("fake_native_enum_correct_use_failure",
+                              py::native_enum_kind::IntEnum)
+            .value("x", fake::x);
     });
 #else
     m.attr("native_enum_correct_use_failure") = "For local testing only: terminates process";
