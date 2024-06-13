@@ -192,7 +192,15 @@ public:
     str_attr_accessor doc() const;
 
     /// Return the object's current reference count
-    int ref_count() const { return static_cast<int>(Py_REFCNT(derived().ptr())); }
+    ssize_t ref_count() const {
+#ifdef PYPY_VERSION
+        // PyPy uses the top few bits for REFCNT_FROM_PYPY & REFCNT_FROM_PYPY_LIGHT
+        // Following pybind11 2.12.1 and older behavior and removing this part
+        return static_cast<ssize_t>(static_cast<int>(Py_REFCNT(derived().ptr())));
+#else
+        return Py_REFCNT(derived().ptr());
+#endif
+    }
 
     // TODO PYBIND11_DEPRECATED(
     //     "Call py::type::handle_of(h) or py::type::of(h) instead of h.get_type()")
@@ -2197,6 +2205,11 @@ public:
             throw error_already_set();
         }
     }
+    void clear() /* py-non-const */ {
+        if (PyList_SetSlice(m_ptr, 0, PyList_Size(m_ptr), nullptr) == -1) {
+            throw error_already_set();
+        }
+    }
 };
 
 class args : public tuple {
@@ -2591,6 +2604,19 @@ PYBIND11_MATH_OPERATOR_BINARY_INPLACE(operator>>=, PyNumber_InPlaceRshift)
 #undef PYBIND11_MATH_OPERATOR_UNARY
 #undef PYBIND11_MATH_OPERATOR_BINARY
 #undef PYBIND11_MATH_OPERATOR_BINARY_INPLACE
+
+// Meant to return a Python str, but this is not checked.
+inline object get_module_name_if_available(handle scope) {
+    if (scope) {
+        if (hasattr(scope, "__module__")) {
+            return scope.attr("__module__");
+        }
+        if (hasattr(scope, "__name__")) {
+            return scope.attr("__name__");
+        }
+    }
+    return object();
+}
 
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)

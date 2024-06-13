@@ -17,18 +17,17 @@
 
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 
+enum class native_enum_kind { Enum, IntEnum };
+
 /// Conversions between Python's native (stdlib) enum types and C++ enums.
 template <typename Type>
 class native_enum : public detail::native_enum_data {
 public:
     using Underlying = typename std::underlying_type<Type>::type;
 
-    explicit native_enum(const char *name)
-        : detail::native_enum_data(name,
-                                   std::type_index(typeid(Type)),
-                                   std::numeric_limits<Underlying>::is_integer
-                                       && !std::is_same<Underlying, bool>::value
-                                       && !detail::is_std_char_type<Underlying>::value) {
+    explicit native_enum(const char *name, native_enum_kind kind)
+        : detail::native_enum_data(
+              name, std::type_index(typeid(Type)), kind == native_enum_kind::IntEnum) {
         if (detail::get_local_type_info(typeid(Type)) != nullptr
             || detail::get_global_type_info(typeid(Type)) != nullptr) {
             pybind11_fail(

@@ -104,6 +104,22 @@ def test_type_caster_name_via_incompatible_function_arguments_type_error():
         m.pass_pyobject_ptr_and_int(ValueHolder(101), ValueHolder(202))
 
 
+def test_trampoline_with_pyobject_ptr_return():
+    class Drvd(m.WithPyObjectPtrReturn):
+        def return_pyobject_ptr(self):
+            return ["11", "22", "33"]
+
+    # Basic health check: First make sure this works as expected.
+    d = Drvd()
+    assert d.return_pyobject_ptr() == ["11", "22", "33"]
+
+    while True:
+        # This failed before PR #5156: AddressSanitizer: heap-use-after-free ... in Py_DECREF
+        d_repr = m.call_return_pyobject_ptr(d)
+        assert d_repr == repr(["11", "22", "33"])
+        break  # Comment out for manual leak checking.
+
+
 def test_pyobject_ptr_from_handle_nullptr():
     assert m.pyobject_ptr_from_handle_nullptr() == "SUCCESS"
 

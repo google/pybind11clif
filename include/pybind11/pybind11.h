@@ -840,7 +840,7 @@ protected:
                     call.args.push_back(arg);
                     call.args_policies.emplace_back(
                         arg_rec ? from_python_policies(
-                            arg_rec->policies.rvpp, arg_rec->policies.convert, false)
+                                      arg_rec->policies.rvpp, arg_rec->policies.convert, false)
                                 : from_python_policies(true, false));
                 }
                 if (bad_arg) {
@@ -1386,8 +1386,14 @@ using module = module_;
 /// Return a dictionary representing the global variables in the current execution frame,
 /// or ``__main__.__dict__`` if there is no frame (usually when the interpreter is embedded).
 inline dict globals() {
+#if PY_VERSION_HEX >= 0x030d0000
+    PyObject *p = PyEval_GetFrameGlobals();
+    return p ? reinterpret_steal<dict>(p)
+             : reinterpret_borrow<dict>(module_::import("__main__").attr("__dict__").ptr());
+#else
     PyObject *p = PyEval_GetGlobals();
     return reinterpret_borrow<dict>(p ? p : module_::import("__main__").attr("__dict__").ptr());
+#endif
 }
 
 template <typename... Args, typename = detail::enable_if_t<args_are_all_keyword_or_ds<Args...>()>>
@@ -3116,7 +3122,12 @@ get_type_override(const void *this_ptr, const type_info *this_type, const char *
         PyCodeObject *f_code = PyFrame_GetCode(frame);
         // f_code is guaranteed to not be NULL
         if ((std::string) str(f_code->co_name) == name && f_code->co_argcount > 0) {
+#        if PY_VERSION_HEX >= 0x030d0000
+            PyObject *locals = PyEval_GetFrameLocals();
+#        else
             PyObject *locals = PyEval_GetLocals();
+            Py_XINCREF(locals);
+#        endif
             if (locals != nullptr) {
 #        if PY_VERSION_HEX >= 0x030b0000
                 PyObject *co_varnames = PyCode_GetVarnames(f_code);
@@ -3126,6 +3137,7 @@ get_type_override(const void *this_ptr, const type_info *this_type, const char *
                 PyObject *self_arg = PyTuple_GET_ITEM(co_varnames, 0);
                 Py_DECREF(co_varnames);
                 PyObject *self_caller = dict_getitem(locals, self_arg);
+                Py_DECREF(locals);
                 if (self_caller == self.ptr()) {
                     Py_DECREF(f_code);
                     Py_DECREF(frame);
@@ -3202,10 +3214,14 @@ function get_override(const T *this_ptr, const char *name) {
             = pybind11::get_override(static_cast<const cname *>(this), name);                     \
         if (override) {                                                                           \
             auto o = override_call(__VA_ARGS__);                                                  \
-            if (pybind11::detail::cast_is_temporary_value_reference<ret_type>::value) {           \
+            PYBIND11_WARNING_PUSH                                                                 \
+            PYBIND11_WARNING_DISABLE_MSVC(4127)                                                   \
+            if (pybind11::detail::cast_is_temporary_value_reference<ret_type>::value              \
+                && !pybind11::detail::is_same_ignoring_cvref<ret_type, PyObject *>::value) {      \
                 static pybind11::detail::override_caster_t<ret_type> caster;                      \
                 return pybind11::detail::cast_ref<ret_type>(std::move(o), caster);                \
             }                                                                                     \
+            PYBIND11_WARNING_POP                                                                  \
             return pybind11::detail::cast_safe<ret_type>(std::move(o));                           \
         }                                                                                         \
     } while (false)
