@@ -65,7 +65,7 @@ void wrap(py::module m) {
 
 namespace exercise_getinitargs_getstate_setstate {
 
-// Exercise `__setstate__[non-constructor]` (see google/pywrapcc#30094), which
+// Exercise `__setstate__[non-constructor]` (see google/pybind11k#30094), which
 // was added to support a pickle protocol as established with Boost.Python
 // (in 2002):
 //   https://www.boost.org/doc/libs/1_31_0/libs/python/doc/v2/pickle.html
@@ -103,7 +103,7 @@ void wrap(py::module m) {
             },
             py::arg("protocol") = -1)
         .def(
-            "__setstate__[non-constructor]", // See google/pywrapcc#30094 for background.
+            "__setstate__[non-constructor]", // See google/pybind11k#30094 for background.
             [](StoreTwoWithState *self, const std::string &state) { self->SetState(state); },
             py::arg("state"));
 }

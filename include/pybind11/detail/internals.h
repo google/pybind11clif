@@ -150,7 +150,7 @@ struct internals {
 #    if PYBIND11_INTERNALS_VERSION > 4
     // Note that we have to use a std::string to allocate memory to ensure a unique address
     // We want unique addresses since we use pointer equality to compare function records
-    // OBSOLETE: google/pywrapcc#30099
+    // OBSOLETE: google/pybind11k#30099
     std::string function_record_capsule_name = internals_function_record_capsule_name;
 #    endif
 

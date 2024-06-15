@@ -415,7 +415,7 @@ protected:
         if (rec->name == nullptr) {
             rec->name = guarded_strdup("");
         } else if (std::strcmp(rec->name, "__setstate__[non-constructor]") == 0) {
-            // See google/pywrapcc#30094 for background.
+            // See google/pybind11k#30094 for background.
             rec->name = guarded_strdup("__setstate__");
         } else {
             rec->name = guarded_strdup(rec->name);

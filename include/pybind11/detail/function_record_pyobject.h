@@ -2,7 +2,7 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-// For background see the description of PR google/pywrapcc#30099.
+// For background see the description of PR google/pybind11k#30099.
 
 // IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
 
