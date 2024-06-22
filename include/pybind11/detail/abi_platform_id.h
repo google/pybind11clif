@@ -60,11 +60,7 @@
 #endif
 
 #ifndef PYBIND11_INTERNALS_KIND
-#    if defined(WITH_THREAD)
-#        define PYBIND11_INTERNALS_KIND ""
-#    else
-#        define PYBIND11_INTERNALS_KIND "_without_thread"
-#    endif
+#    define PYBIND11_INTERNALS_KIND ""
 #endif
 
 /// See README_smart_holder.rst:
