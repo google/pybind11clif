@@ -10,7 +10,7 @@
 
 #include "common.h"
 
-#if defined(WITH_THREAD) && defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
+#if defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
 #    include "../gil.h"
 #endif
 
@@ -43,10 +43,9 @@ inline object get_python_state_dict() {
     return state_dict;
 }
 
-#if defined(WITH_THREAD)
-#    if defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
+#if defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
 using gil_scoped_acquire_simple = gil_scoped_acquire;
-#    else
+#else
 // Cannot use py::gil_scoped_acquire here since that constructor calls get_internals.
 struct gil_scoped_acquire_simple {
     gil_scoped_acquire_simple() : state(PyGILState_Ensure()) {}
@@ -55,7 +54,6 @@ struct gil_scoped_acquire_simple {
     ~gil_scoped_acquire_simple() { PyGILState_Release(state); }
     const PyGILState_STATE state;
 };
-#    endif
 #endif
 
 /* NOTE: struct cross_extension_shared_state is in
