@@ -71,6 +71,7 @@ detail_headers = {
     "include/pybind11/detail/type_caster_odr_guard.h",
     "include/pybind11/detail/type_map.h",
     "include/pybind11/detail/typeid.h",
+    "include/pybind11/detail/value_and_holder.h",
 }
 
 eigen_headers = {
