@@ -48,8 +48,4 @@ def test_type_caster_odr_violation_detected_counter():
     if num_violations == 0:
         if m.if_defined__NO_INLINE__:
             pytest.skip(_count_0_message("__NO_INLINE__"))
-        if m.CUDACC is not None:
-            pytest.skip(_count_0_message(f"CUDACC = {m.CUDACC}"))
-        if m.NVCOMPILER is not None:
-            pytest.skip(_count_0_message(f"NVCOMPILER = {m.NVCOMPILER}"))
     assert num_violations == 1
