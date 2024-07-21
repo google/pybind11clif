@@ -45,7 +45,6 @@ def test_type_caster_odr_violation_detected_counter():
     num_violations = m.type_caster_odr_violation_detected_count()
     if num_violations is None:
         pytest.skip("type_caster_odr_violation_detected_count() is None")
-    if num_violations == 0:
-        if m.if_defined__NO_INLINE__:
-            pytest.skip(_count_0_message("__NO_INLINE__"))
+    if num_violations == 0 and m.if_defined__NO_INLINE__:
+        pytest.skip(_count_0_message("__NO_INLINE__"))
     assert num_violations == 1
