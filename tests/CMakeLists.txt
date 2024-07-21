@@ -151,6 +151,7 @@ set(PYBIND11_TEST_FILES
     test_copy_move
     test_custom_type_casters
     test_custom_type_setup
+    test_descr_src_loc
     test_docstring_options
     test_eigen_matrix
     test_eigen_tensor
