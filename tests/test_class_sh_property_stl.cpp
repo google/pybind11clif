@@ -20,7 +20,7 @@ struct FieldHolder {
 
 struct VectorFieldHolder {
     std::vector<FieldHolder> vec_fld_hld;
-    VectorFieldHolder() { vec_fld_hld.push_back(FieldHolder{Field{300}}); }
+    VectorFieldHolder() { vec_fld_hld.emplace_back(Field{300}); }
     void reset_at(std::size_t index, int wrapped_int) {
         if (index < vec_fld_hld.size()) {
             vec_fld_hld[index].fld.wrapped_int = wrapped_int;
