@@ -7,10 +7,7 @@
 #define PYBIND11_HAS_NATIVE_ENUM
 
 #include "../pytypes.h"
-#include "abi_platform_id.h"
 #include "common.h"
-#include "cross_extension_shared_state.h"
-#include "type_map.h"
 
 #include <string>
 #include <typeindex>
