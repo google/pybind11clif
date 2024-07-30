@@ -59,6 +59,30 @@ public:
     list docs;
 };
 
+inline void global_internals_native_enum_type_map_set_item(const std::type_index &enum_type_index,
+                                                           PyObject *py_enum) {
+    with_internals(
+        [&](internals &internals) { internals.native_enum_type_map[enum_type_index] = py_enum; });
+}
+
+inline handle
+global_internals_native_enum_type_map_get_item(const std::type_index &enum_type_index) {
+    return with_internals([&](internals &internals) {
+        auto found = internals.native_enum_type_map.find(enum_type_index);
+        if (found != internals.native_enum_type_map.end()) {
+            return handle(found->second);
+        }
+        return handle();
+    });
+}
+
+inline bool
+global_internals_native_enum_type_map_contains(const std::type_index &enum_type_index) {
+    return with_internals([&](internals &internals) {
+        return internals.native_enum_type_map.count(enum_type_index) != 0;
+    });
+}
+
 inline void native_enum_add_to_parent(const object &parent, const detail::native_enum_data &data) {
     data.disarm_correct_use_check();
     if (hasattr(parent, data.enum_name)) {
@@ -92,7 +116,7 @@ inline void native_enum_add_to_parent(const object &parent, const detail::native
     for (auto doc : data.docs) {
         py_enum[doc[int_(0)]].attr("__doc__") = doc[int_(1)];
     }
-    get_internals().native_enum_type_map[data.enum_type_index] = py_enum.release().ptr();
+    global_internals_native_enum_type_map_set_item(data.enum_type_index, py_enum.release().ptr());
 }
 
 PYBIND11_NAMESPACE_END(detail)
