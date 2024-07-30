@@ -8,6 +8,7 @@
 
 #include "../pytypes.h"
 #include "common.h"
+#include "internals.h"
 
 #include <string>
 #include <typeindex>
@@ -58,33 +59,6 @@ public:
     list docs;
 };
 
-PYBIND11_NAMESPACE_END(detail)
-
-PYBIND11_NAMESPACE_BEGIN(cross_extension_shared_states)
-
-struct native_enum_type_map_v1_adapter {
-    static constexpr const char *abi_id() {
-        return "__pybind11_native_enum_type_map_v1" PYBIND11_PLATFORM_ABI_ID_V4 "__";
-    }
-
-    using payload_type = detail::type_map<PyObject *>;
-
-    static void payload_clear(payload_type &payload) {
-        for (auto it : payload) {
-            Py_DECREF(it.second);
-        }
-        payload.clear();
-    }
-};
-
-using native_enum_type_map_v1
-    = detail::cross_extension_shared_state<native_enum_type_map_v1_adapter>;
-using native_enum_type_map = native_enum_type_map_v1;
-
-PYBIND11_NAMESPACE_END(cross_extension_shared_states)
-
-PYBIND11_NAMESPACE_BEGIN(detail)
-
 inline void native_enum_add_to_parent(const object &parent, const detail::native_enum_data &data) {
     data.disarm_correct_use_check();
     if (hasattr(parent, data.enum_name)) {
@@ -118,10 +92,8 @@ inline void native_enum_add_to_parent(const object &parent, const detail::native
     for (auto doc : data.docs) {
         py_enum[doc[int_(0)]].attr("__doc__") = doc[int_(1)];
     }
-    cross_extension_shared_states::native_enum_type_map::get()[data.enum_type_index]
-        = py_enum.release().ptr();
+    get_internals().native_enum_type_map[data.enum_type_index] = py_enum.release().ptr();
 }
 
 PYBIND11_NAMESPACE_END(detail)
-
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)

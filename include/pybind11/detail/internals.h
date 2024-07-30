@@ -36,6 +36,13 @@
 /// pybind11 may not be tested as thoroughly with a non-default ABI version, and
 /// further ABI-incompatible changes may be made before the ABI is officially
 /// changed to the new version.
+// NATIVE_ENUM_IN_INTERNALS_WIP:
+#if defined(PYBIND11_INTERNALS_VERSION) && PYBIND11_INTERNALS_VERSION < 6
+#    undef PYBIND11_INTERNALS_VERSION
+#endif
+#ifndef PYBIND11_INTERNALS_VERSION
+#    define PYBIND11_INTERNALS_VERSION 6
+#endif
 #ifndef PYBIND11_INTERNALS_VERSION
 #    if PY_VERSION_HEX >= 0x030C0000 || defined(_MSC_VER)
 // Version bump for Python 3.12+, before first 3.12 beta release.
@@ -216,6 +223,10 @@ struct internals {
     // Note that we have to use a std::string to allocate memory to ensure a unique address
     // We want unique addresses since we use pointer equality to compare function records
     std::string function_record_capsule_name = internals_function_record_capsule_name;
+#endif
+
+#if PYBIND11_INTERNALS_VERSION >= 6
+    type_map<PyObject *> native_enum_type_map;
 #endif
 
     internals() = default;

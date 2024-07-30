@@ -88,7 +88,7 @@ public:
 
     template <typename SrcType>
     static handle cast(SrcType &&src, return_value_policy, handle parent) {
-        auto const &natives = cross_extension_shared_states::native_enum_type_map::get();
+        auto const &natives = get_internals().native_enum_type_map;
         auto found = natives.find(std::type_index(typeid(EnumType)));
         if (found != natives.end()) {
             return handle(found->second)(static_cast<Underlying>(src)).release();
@@ -101,7 +101,7 @@ public:
     }
 
     bool load(handle src, bool convert) {
-        auto const &natives = cross_extension_shared_states::native_enum_type_map::get();
+        auto const &natives = get_internals().native_enum_type_map;
         auto found = natives.find(std::type_index(typeid(EnumType)));
         if (found != natives.end()) {
             if (!isinstance(src, found->second)) {
@@ -180,7 +180,7 @@ struct type_caster_classh_enum_aware<
 
 template <typename T, detail::enable_if_t<std::is_enum<T>::value, int> = 0>
 bool isinstance_native_enum_impl(handle obj, const std::type_info &tp) {
-    auto const &natives = cross_extension_shared_states::native_enum_type_map::get();
+    auto const &natives = get_internals().native_enum_type_map;
     auto found = natives.find(tp);
     if (found == natives.end()) {
         return false;
@@ -1351,9 +1351,8 @@ T cast(const handle &handle) {
                   "Unable to cast type to reference: value is local to type caster");
 #ifndef NDEBUG
     if (is_enum_cast && cast_is_temporary_value_reference<T>::value) {
-        if (cross_extension_shared_states::native_enum_type_map::get().count(
-                std::type_index(typeid(intrinsic_t<T>)))
-            != 0) {
+        auto const &natives = get_internals().native_enum_type_map;
+        if (natives.count(std::type_index(typeid(intrinsic_t<T>))) != 0) {
             pybind11_fail("Unable to cast native enum type to reference");
         }
     }
