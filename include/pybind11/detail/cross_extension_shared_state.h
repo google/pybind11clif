@@ -110,7 +110,7 @@ struct cross_extension_shared_state {
         }
         *payload_pp() = new payload_type();
         get_python_state_dict()[AdapterType::abi_id()]
-            = capsule(payload_pp(), AdapterType::abi_id());
+            = capsule(reinterpret_cast<void *>(payload_pp()), AdapterType::abi_id());
         return **payload_pp();
     }
 
