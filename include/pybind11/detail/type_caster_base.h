@@ -611,6 +611,8 @@ handle smart_holder_from_shared_ptr(const std::shared_ptr<T> &src,
         case return_value_policy::reference:
             throw cast_error("Invalid return_value_policy for shared_ptr (reference).");
         case return_value_policy::reference_internal:
+        case return_value_policy::_return_as_bytes:
+        case return_value_policy::_clif_automatic:
             break;
     }
     if (!src) {
