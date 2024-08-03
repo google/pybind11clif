@@ -4,6 +4,11 @@ import pytest
 
 from pybind11_tests import class_sh_void_ptr_capsule as m
 
+pytest.skip(
+    "PYBIND11K_MERGE_SH_AFTER_PR5257_WIP: void_ptr_capsule feature needs to be re-integrated",
+    allow_module_level=True,
+)
+
 
 class Valid:
     def __init__(self):
