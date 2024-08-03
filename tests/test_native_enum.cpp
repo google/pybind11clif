@@ -71,9 +71,6 @@ PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
 TEST_SUBMODULE(native_enum, m) {
     using namespace test_native_enum;
 
-    m.attr("native_enum_type_map_abi_id_c_str")
-        = py::cross_extension_shared_states::native_enum_type_map::abi_id();
-
     m += py::native_enum<smallenum>("smallenum", py::native_enum_kind::IntEnum)
              .value("a", smallenum::a)
              .value("b", smallenum::b)
