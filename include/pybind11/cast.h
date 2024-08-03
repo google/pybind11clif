@@ -13,7 +13,6 @@
 #include "detail/common.h"
 #include "detail/descr.h"
 #include "detail/native_enum_data.h"
-#include "detail/smart_holder_sfinae_hooks_only.h"
 #include "detail/type_caster_base.h"
 #include "detail/type_caster_odr_guard.h"
 #include "detail/typeid.h"
@@ -31,23 +30,14 @@
 #include <utility>
 #include <vector>
 
-#ifdef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
-#    include "detail/smart_holder_type_casters.h"
-#endif
-
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 
 PYBIND11_WARNING_DISABLE_MSVC(4127)
 
 PYBIND11_NAMESPACE_BEGIN(detail)
 
-#ifndef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
-template <typename T>
-class type_caster_for_class_ : public type_caster_base<T> {};
-#endif
-
 template <typename type, typename SFINAE = void>
-class type_caster : public type_caster_for_class_<type> {};
+class type_caster : public type_caster_base<type> {};
 
 #if defined(PYBIND11_ENABLE_TYPE_CASTER_ODR_GUARD)
 
@@ -93,7 +83,7 @@ public:
         if (native_enum) {
             return native_enum(static_cast<Underlying>(src)).release();
         }
-        return type_caster_for_class_<EnumType>::cast(
+        return type_caster_base<EnumType>::cast(
             std::forward<SrcType>(src),
             // Fixes https://github.com/pybind/pybind11/pull/3643#issuecomment-1022987818:
             return_value_policy::copy,
@@ -115,7 +105,7 @@ public:
             return true;
         }
         if (!pybind11_enum_) {
-            pybind11_enum_.reset(new type_caster_for_class_<EnumType>());
+            pybind11_enum_.reset(new type_caster_base<EnumType>());
         }
         return pybind11_enum_->load(src, convert);
     }
@@ -140,7 +130,7 @@ public:
     }
 
 private:
-    std::unique_ptr<type_caster_for_class_<EnumType>> pybind11_enum_;
+    std::unique_ptr<type_caster_base<EnumType>> pybind11_enum_;
     EnumType value;
 };
 
@@ -156,27 +146,6 @@ struct type_uses_type_caster_enum_type {
 template <typename EnumType>
 class type_caster<EnumType, detail::enable_if_t<type_uses_type_caster_enum_type<EnumType>::value>>
     : public type_caster_enum_type<EnumType> {};
-
-template <typename T>
-struct type_uses_smart_holder_type_caster {
-    static constexpr bool value
-        = std::is_base_of<smart_holder_type_caster_base_tag, make_caster<T>>::value
-#ifdef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
-          || type_uses_type_caster_enum_type<T>::value
-#endif
-        ;
-};
-
-template <typename T, typename SFINAE = void>
-struct type_caster_classh_enum_aware : type_caster<T> {};
-
-#ifdef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
-template <typename EnumType>
-struct type_caster_classh_enum_aware<
-    EnumType,
-    detail::enable_if_t<type_uses_type_caster_enum_type<EnumType>::value>>
-    : type_caster_for_class_<EnumType> {};
-#endif
 
 template <typename T, detail::enable_if_t<std::is_enum<T>::value, int> = 0>
 bool isinstance_native_enum_impl(handle obj, const std::type_info &tp) {
@@ -308,7 +277,7 @@ public:
         } else {
             handle src_or_index = src;
             // PyPy: 7.3.7's 3.8 does not implement PyLong_*'s __index__ calls.
-#if PY_VERSION_HEX < 0x03080000 || defined(PYPY_VERSION)
+#if defined(PYPY_VERSION)
             object index;
             if (!PYBIND11_LONG_CHECK(src.ptr())) { // So: index_check(src.ptr())
                 index = reinterpret_steal<object>(PyNumber_Index(src.ptr()));
@@ -911,6 +880,7 @@ struct holder_helper {
     static auto get(const T &p) -> decltype(p.get()) { return p.get(); }
 };
 
+// SMART_HOLDER_BAKEIN_FOLLOW_ON: Rewrite comment, with reference to shared_ptr specialization.
 /// Type caster for holder types like std::shared_ptr, etc.
 /// The SFINAE hook is provided to help work around the current lack of support
 /// for smart-pointer interoperability. Please consider it an implementation
@@ -992,12 +962,140 @@ protected:
     holder_type holder;
 };
 
-#ifndef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
+#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+
+template <typename, typename SFINAE = void>
+struct copyable_holder_caster_shared_ptr_with_smart_holder_support_enabled : std::true_type {};
+
+// SMART_HOLDER_BAKEIN_FOLLOW_ON: Refactor copyable_holder_caster to reduce code duplication.
+template <typename type>
+struct copyable_holder_caster<
+    type,
+    std::shared_ptr<type>,
+    enable_if_t<copyable_holder_caster_shared_ptr_with_smart_holder_support_enabled<type>::value>>
+    : public type_caster_base<type> {
+public:
+    using base = type_caster_base<type>;
+    static_assert(std::is_base_of<base, type_caster<type>>::value,
+                  "Holder classes are only supported for custom types");
+    using base::base;
+    using base::cast;
+    using base::typeinfo;
+    using base::value;
+
+    bool load(handle src, bool convert) {
+        return base::template load_impl<copyable_holder_caster<type, std::shared_ptr<type>>>(
+            src, convert);
+    }
+
+    explicit operator std::shared_ptr<type> *() {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            pybind11_fail("Passing `std::shared_ptr<T> *` from Python to C++ is not supported "
+                          "(inherently unsafe).");
+        }
+        return std::addressof(shared_ptr_holder);
+    }
+
+    explicit operator std::shared_ptr<type> &() {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            shared_ptr_holder = sh_load_helper.load_as_shared_ptr(value);
+        }
+        return shared_ptr_holder;
+    }
+
+    static handle
+    cast(const std::shared_ptr<type> &src, return_value_policy policy, handle parent) {
+        const auto *ptr = src.get();
+        auto st = type_caster_base<type>::src_and_type(ptr);
+        if (st.second == nullptr) {
+            return handle(); // no type info: error will be set already
+        }
+        if (st.second->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            return smart_holder_type_caster_support::smart_holder_from_shared_ptr(
+                src, policy, parent, st);
+        }
+        return type_caster_base<type>::cast_holder(ptr, &src);
+    }
+
+    // This function will succeed even if the `responsible_parent` does not own the
+    // wrapped C++ object directly.
+    // It is the responsibility of the caller to ensure that the `responsible_parent`
+    // has a `keep_alive` relationship with the owner of the wrapped C++ object, or
+    // that the wrapped C++ object lives for the duration of the process.
+    static std::shared_ptr<type> shared_ptr_with_responsible_parent(handle responsible_parent) {
+        copyable_holder_caster loader;
+        loader.load(responsible_parent, /*convert=*/false);
+        assert(loader.typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder);
+        return loader.sh_load_helper.load_as_shared_ptr(loader.value, responsible_parent);
+    }
+
+protected:
+    friend class type_caster_generic;
+    void check_holder_compat() {
+        if (typeinfo->default_holder) {
+            throw cast_error("Unable to load a custom holder type from a default-holder instance");
+        }
+    }
+
+    void load_value(value_and_holder &&v_h) {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            sh_load_helper.loaded_v_h = v_h;
+            value = sh_load_helper.get_void_ptr_or_nullptr();
+            return;
+        }
+        if (v_h.holder_constructed()) {
+            value = v_h.value_ptr();
+            shared_ptr_holder = v_h.template holder<std::shared_ptr<type>>();
+            return;
+        }
+        throw cast_error("Unable to cast from non-held to held instance (T& to Holder<T>) "
+#    if !defined(PYBIND11_DETAILED_ERROR_MESSAGES)
+                         "(#define PYBIND11_DETAILED_ERROR_MESSAGES or compile in debug mode for "
+                         "type information)");
+#    else
+                         "of type '"
+                         + type_id<std::shared_ptr<type>>() + "''");
+#    endif
+    }
+
+    template <typename T = std::shared_ptr<type>,
+              detail::enable_if_t<!std::is_constructible<T, const T &, type *>::value, int> = 0>
+    bool try_implicit_casts(handle, bool) {
+        return false;
+    }
+
+    template <typename T = std::shared_ptr<type>,
+              detail::enable_if_t<std::is_constructible<T, const T &, type *>::value, int> = 0>
+    bool try_implicit_casts(handle src, bool convert) {
+        for (auto &cast : typeinfo->implicit_casts) {
+            copyable_holder_caster sub_caster(*cast.first);
+            if (sub_caster.load(src, convert)) {
+                value = cast.second(sub_caster.value);
+                if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+                    sh_load_helper.loaded_v_h = sub_caster.sh_load_helper.loaded_v_h;
+                } else {
+                    shared_ptr_holder
+                        = std::shared_ptr<type>(sub_caster.shared_ptr_holder, (type *) value);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool try_direct_conversions(handle) { return false; }
+
+    std::shared_ptr<type> shared_ptr_holder;
+    smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+};
+
+#endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+
 /// Specialize for the common std::shared_ptr, so users don't need to
 template <typename T>
 class type_caster<std::shared_ptr<T>> : public copyable_holder_caster<T, std::shared_ptr<T>> {};
-#endif
 
+// SMART_HOLDER_BAKEIN_FOLLOW_ON: Rewrite comment, with reference to unique_ptr specialization.
 /// Type caster for holder types like std::unique_ptr.
 /// Please consider the SFINAE hook an implementation detail, as explained
 /// in the comment for the copyable_holder_caster.
@@ -1013,11 +1111,115 @@ struct move_only_holder_caster {
     static constexpr auto name = type_caster_base<type>::name;
 };
 
-#ifndef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
+#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+
+template <typename, typename SFINAE = void>
+struct move_only_holder_caster_unique_ptr_with_smart_holder_support_enabled : std::true_type {};
+
+// SMART_HOLDER_BAKEIN_FOLLOW_ON: Refactor move_only_holder_caster to reduce code duplication.
+template <typename type, typename deleter>
+struct move_only_holder_caster<
+    type,
+    std::unique_ptr<type, deleter>,
+    enable_if_t<move_only_holder_caster_unique_ptr_with_smart_holder_support_enabled<type>::value>>
+    : public type_caster_base<type> {
+public:
+    using base = type_caster_base<type>;
+    static_assert(std::is_base_of<base, type_caster<type>>::value,
+                  "Holder classes are only supported for custom types");
+    using base::base;
+    using base::cast;
+    using base::typeinfo;
+    using base::value;
+
+    static handle
+    cast(std::unique_ptr<type, deleter> &&src, return_value_policy policy, handle parent) {
+        auto *ptr = src.get();
+        auto st = type_caster_base<type>::src_and_type(ptr);
+        if (st.second == nullptr) {
+            return handle(); // no type info: error will be set already
+        }
+        if (st.second->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            return smart_holder_type_caster_support::smart_holder_from_unique_ptr(
+                std::move(src), policy, parent, st);
+        }
+        return type_caster_generic::cast(st.first,
+                                         return_value_policy::take_ownership,
+                                         {},
+                                         st.second,
+                                         nullptr,
+                                         nullptr,
+                                         std::addressof(src));
+    }
+
+    static handle
+    cast(const std::unique_ptr<type, deleter> &src, return_value_policy policy, handle parent) {
+        if (!src) {
+            return none().release();
+        }
+        if (policy == return_value_policy::automatic) {
+            policy = return_value_policy::reference_internal;
+        }
+        if (policy != return_value_policy::reference_internal) {
+            throw cast_error("Invalid return_value_policy for unique_ptr&");
+        }
+        return type_caster_base<type>::cast(src.get(), policy, parent);
+    }
+
+    bool load(handle src, bool convert) {
+        return base::template load_impl<
+            move_only_holder_caster<type, std::unique_ptr<type, deleter>>>(src, convert);
+    }
+
+    void load_value(value_and_holder &&v_h) {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            sh_load_helper.loaded_v_h = v_h;
+            sh_load_helper.loaded_v_h.type = typeinfo;
+            value = sh_load_helper.get_void_ptr_or_nullptr();
+            return;
+        }
+        pybind11_fail(
+            "Passing `std::unique_ptr<T>` from Python to C++ requires `py::classh` (with T = "
+            + clean_type_id(typeinfo->cpptype->name()) + ")");
+    }
+
+    template <typename>
+    using cast_op_type = std::unique_ptr<type, deleter>;
+
+    explicit operator std::unique_ptr<type, deleter>() {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            return sh_load_helper.template load_as_unique_ptr<deleter>(value);
+        }
+        pybind11_fail("Expected to be UNREACHABLE: " __FILE__ ":" PYBIND11_TOSTRING(__LINE__));
+    }
+
+    bool try_implicit_casts(handle src, bool convert) {
+        for (auto &cast : typeinfo->implicit_casts) {
+            move_only_holder_caster sub_caster(*cast.first);
+            if (sub_caster.load(src, convert)) {
+                value = cast.second(sub_caster.value);
+                if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+                    sh_load_helper.loaded_v_h = sub_caster.sh_load_helper.loaded_v_h;
+                } else {
+                    pybind11_fail("Expected to be UNREACHABLE: " __FILE__
+                                  ":" PYBIND11_TOSTRING(__LINE__));
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool try_direct_conversions(handle) { return false; }
+
+    smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+};
+
+#endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+
 template <typename type, typename deleter>
 class type_caster<std::unique_ptr<type, deleter>>
     : public move_only_holder_caster<type, std::unique_ptr<type, deleter>> {};
-#endif
 
 template <typename type, typename holder_type>
 using type_caster_holder = conditional_t<is_copy_constructible<holder_type>::value,
@@ -1046,9 +1248,15 @@ struct always_construct_holder {
 template <typename base, typename holder>
 struct is_holder_type
     : std::is_base_of<detail::type_caster_holder<base, holder>, detail::type_caster<holder>> {};
-// Specialization for always-supported unique_ptr holders:
+
+// Specializations for always-supported holders:
 template <typename base, typename deleter>
 struct is_holder_type<base, std::unique_ptr<base, deleter>> : std::true_type {};
+
+#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+template <typename base>
+struct is_holder_type<base, smart_holder> : std::true_type {};
+#endif
 
 #ifdef PYBIND11_DISABLE_HANDLE_TYPE_NAME_DEFAULT_IMPLEMENTATION // See PR #4888
 
@@ -1278,11 +1486,10 @@ using move_never = none_of<move_always<T>, move_if_unreferenced<T>>;
 // non-reference/pointer `type`s and reference/pointers from a type_caster_generic are safe;
 // everything else returns a reference/pointer to a local variable.
 template <typename type>
-using cast_is_temporary_value_reference = bool_constant<
-    (std::is_reference<type>::value || std::is_pointer<type>::value)
-    && !std::is_base_of<type_caster_generic, make_caster<type>>::value
-    && !std::is_base_of<smart_holder_type_caster_base_tag, make_caster<type>>::value
-    && !std::is_same<intrinsic_t<type>, void>::value>;
+using cast_is_temporary_value_reference
+    = bool_constant<(std::is_reference<type>::value || std::is_pointer<type>::value)
+                    && !std::is_base_of<type_caster_generic, make_caster<type>>::value
+                    && !std::is_same<intrinsic_t<type>, void>::value>;
 
 // When a value returned from a C++ function is being cast back to Python, we almost always want to
 // force `policy = move`, regardless of the return value policy the function/method was declared
@@ -1295,9 +1502,7 @@ struct return_value_policy_override {
 template <typename Return>
 struct return_value_policy_override<
     Return,
-    detail::enable_if_t<std::is_base_of<type_caster_generic, make_caster<Return>>::value
-                            || type_uses_smart_holder_type_caster<intrinsic_t<Return>>::value,
-                        void>> {
+    detail::enable_if_t<std::is_base_of<type_caster_generic, make_caster<Return>>::value, void>> {
     static return_value_policy policy(return_value_policy p) {
         return !std::is_lvalue_reference<Return>::value && !std::is_pointer<Return>::value
                        && p != return_value_policy::_clif_automatic
@@ -1737,7 +1942,7 @@ struct kw_only {};
 
 /// \ingroup annotations
 /// Annotation indicating that all previous arguments are positional-only; the is the equivalent of
-/// an unnamed '/' argument (in Python 3.8)
+/// an unnamed '/' argument
 struct pos_only {};
 
 PYBIND11_NAMESPACE_BEGIN(detail)
@@ -2131,10 +2336,8 @@ PYBIND11_NAMESPACE_END(detail)
 
 template <typename T>
 handle type::handle_of() {
-    static_assert(
-        detail::any_of<std::is_base_of<detail::type_caster_generic, detail::make_caster<T>>,
-                       detail::type_uses_smart_holder_type_caster<T>>::value,
-        "py::type::of<T> only supports the case where T is a registered C++ types.");
+    static_assert(std::is_base_of<detail::type_caster_generic, detail::make_caster<T>>::value,
+                  "py::type::of<T> only supports the case where T is a registered C++ types.");
 
     return detail::get_type_handle(typeid(T), true);
 }
@@ -2143,7 +2346,7 @@ handle type::handle_of() {
     PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)                                                  \
     namespace detail {                                                                            \
     template <>                                                                                   \
-    class type_caster<__VA_ARGS__> : public type_caster_for_class_<__VA_ARGS__> {};               \
+    class type_caster<__VA_ARGS__> : public type_caster_base<__VA_ARGS__> {};                     \
     }                                                                                             \
     PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
 
