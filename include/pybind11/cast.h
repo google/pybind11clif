@@ -958,6 +958,7 @@ protected:
     }
 
     static bool try_direct_conversions(handle) { return false; }
+    static bool try_as_void_ptr_capsule(handle) { return false; }
 
     holder_type holder;
 };
@@ -998,6 +999,14 @@ public:
 
     explicit operator std::shared_ptr<type> &() {
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            if (from_direct_conversion) {
+                throw cast_error("Unowned pointer from direct conversion cannot be converted to a "
+                                 "std::shared_ptr.");
+            }
+            if (from_as_void_ptr_capsule) {
+                throw cast_error("Unowned pointer from a void pointer capsule cannot be converted "
+                                 "to a std::shared_ptr.");
+            }
             shared_ptr_holder = sh_load_helper.load_as_shared_ptr(value);
         }
         return shared_ptr_holder;
@@ -1083,10 +1092,26 @@ protected:
         return false;
     }
 
-    static bool try_direct_conversions(handle) { return false; }
+    bool try_direct_conversions(handle src) {
+        if (type_caster_base<type>::try_direct_conversions(src)) {
+            from_direct_conversion = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool try_as_void_ptr_capsule(handle src) {
+        if (type_caster_base<type>::try_as_void_ptr_capsule(src)) {
+            from_as_void_ptr_capsule = true;
+            return true;
+        }
+        return false;
+    }
 
     std::shared_ptr<type> shared_ptr_holder;
     smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+    bool from_direct_conversion = false;
+    bool from_as_void_ptr_capsule = false;
 };
 
 #endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
@@ -1188,6 +1213,14 @@ public:
 
     explicit operator std::unique_ptr<type, deleter>() {
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            if (from_direct_conversion) {
+                throw cast_error("Unowned pointer from direct conversion cannot be converted to a "
+                                 "std::unique_ptr.");
+            }
+            if (from_as_void_ptr_capsule) {
+                throw cast_error("Unowned pointer from a void pointer capsule cannot be converted "
+                                 "to a std::unique_ptr.");
+            }
             return sh_load_helper.template load_as_unique_ptr<deleter>(value);
         }
         pybind11_fail("Expected to be UNREACHABLE: " __FILE__ ":" PYBIND11_TOSTRING(__LINE__));
@@ -1210,9 +1243,25 @@ public:
         return false;
     }
 
-    static bool try_direct_conversions(handle) { return false; }
+    bool try_direct_conversions(handle src) {
+        if (type_caster_base<type>::try_direct_conversions(src)) {
+            from_direct_conversion = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool try_as_void_ptr_capsule(handle src) {
+        if (type_caster_base<type>::try_as_void_ptr_capsule(src)) {
+            from_as_void_ptr_capsule = true;
+            return true;
+        }
+        return false;
+    }
 
     smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+    bool from_direct_conversion = false;
+    bool from_as_void_ptr_capsule = false;
 };
 
 #endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT

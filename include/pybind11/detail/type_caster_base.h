@@ -16,6 +16,7 @@
 #include "descr.h"
 #include "dynamic_raw_ptr_cast_if_possible.h"
 #include "internals.h"
+#include "try_as_void_ptr_capsule_get_pointer.h"
 #include "typeid.h"
 #include "using_smart_holder.h"
 #include "value_and_holder.h"
@@ -985,6 +986,13 @@ public:
         }
         return false;
     }
+    bool try_as_void_ptr_capsule(handle src) {
+        value = try_as_void_ptr_capsule_get_pointer(src, cpptype->name());
+        if (value != nullptr) {
+            return true;
+        }
+        return false;
+    }
     void check_holder_compat() {}
 
     PYBIND11_NOINLINE static void *local_load(PyObject *src, const type_info *ti) {
@@ -1113,6 +1121,10 @@ public:
                 return false;
             }
             value = nullptr;
+            return true;
+        }
+
+        if (convert && cpptype && this_.try_as_void_ptr_capsule(src)) {
             return true;
         }
 
