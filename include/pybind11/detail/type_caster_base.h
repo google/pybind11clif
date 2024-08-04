@@ -987,10 +987,18 @@ public:
         return false;
     }
     bool try_as_void_ptr_capsule(handle src) {
-        value = try_as_void_ptr_capsule_get_pointer(src, cpptype->name());
-        if (value != nullptr) {
-            return true;
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        // The `as_void_ptr_capsule` feature is needed for PyCLIF-SWIG interoperability
+        // in the Google-internal environment, but the current implementation is lacking
+        // any safety checks. To lower the risk potential, the feature is activated
+        // only if the smart_holder is used (PyCLIF-pybind11 uses `classh`).
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            value = try_as_void_ptr_capsule_get_pointer(src, cpptype->name());
+            if (value != nullptr) {
+                return true;
+            }
         }
+#endif
         return false;
     }
     void check_holder_compat() {}
