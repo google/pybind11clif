@@ -11,6 +11,7 @@
 #include "../attr.h"
 #include "../pytypes.h"
 #include "common.h"
+#include "internals.h"
 
 #include <cstring>
 
@@ -47,7 +48,7 @@ PYBIND11_WARNING_POP
 // Note that this name is versioned.
 constexpr char tp_name_impl[]
     = "pybind11_detail_function_record_" PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID
-      "_" PYBIND11_PLATFORM_ABI_ID_V4;
+        PYBIND11_INTERNALS_ID;
 
 PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 
