@@ -963,7 +963,7 @@ protected:
     holder_type holder;
 };
 
-#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 
 template <typename, typename SFINAE = void>
 struct copyable_holder_caster_shared_ptr_with_smart_holder_support_enabled : std::true_type {};
@@ -1114,7 +1114,7 @@ protected:
     bool from_as_void_ptr_capsule = false;
 };
 
-#endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#endif // PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 
 /// Specialize for the common std::shared_ptr, so users don't need to
 template <typename T>
@@ -1136,7 +1136,7 @@ struct move_only_holder_caster {
     static constexpr auto name = type_caster_base<type>::name;
 };
 
-#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 
 template <typename, typename SFINAE = void>
 struct move_only_holder_caster_unique_ptr_with_smart_holder_support_enabled : std::true_type {};
@@ -1264,7 +1264,7 @@ public:
     bool from_as_void_ptr_capsule = false;
 };
 
-#endif // PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#endif // PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 
 template <typename type, typename deleter>
 class type_caster<std::unique_ptr<type, deleter>>
@@ -1302,7 +1302,7 @@ struct is_holder_type
 template <typename base, typename deleter>
 struct is_holder_type<base, std::unique_ptr<base, deleter>> : std::true_type {};
 
-#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 template <typename base>
 struct is_holder_type<base, smart_holder> : std::true_type {};
 #endif
