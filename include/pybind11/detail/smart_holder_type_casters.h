@@ -1,0 +1,3 @@
+// DUMMY FILE FOR TRANSITION PERIOD:
+// THIS WAS A PRIVATE HEADER THAT WAS REMOVED WITH
+// https://github.com/pybind/pybind11/pull/5257
