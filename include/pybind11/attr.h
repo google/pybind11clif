@@ -351,7 +351,7 @@ struct type_record {
     /// Solves pybind/pybind11#1446
     bool release_gil_before_calling_cpp_dtor : 1;
 
-#ifdef PYBIND11_HAVE_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
     holder_enum_t holder_enum_v = holder_enum_t::undefined;
 #endif
 

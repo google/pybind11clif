@@ -1,5 +1,10 @@
 // Copyright (c) 2024 The pybind Community.
 
+// **WARNING:**
+// The `as_void_ptr_capsule` feature is needed for PyCLIF-SWIG interoperability
+// in the Google-internal environment, but the current implementation is lacking
+// any safety checks.
+
 // IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
 
 #pragma once
