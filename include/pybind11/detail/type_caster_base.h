@@ -1425,6 +1425,17 @@ public:
         return cast(std::addressof(src), policy, parent);
     }
 
+    static handle cast(itype &src, return_value_policy policy, handle parent) {
+        if (policy == return_value_policy::_clif_automatic) {
+            if (is_move_constructible<itype>::value) {
+                policy = return_value_policy::move;
+            } else {
+                policy = return_value_policy::automatic;
+            }
+        }
+        return cast(const_cast<const itype &>(src), policy, parent); // Mutbl2Const
+    }
+
     static handle cast(itype &&src, return_value_policy, handle parent) {
         return cast(std::addressof(src), return_value_policy::move, parent);
     }
@@ -1456,12 +1467,26 @@ public:
 
     static handle cast(const itype *src, return_value_policy policy, handle parent) {
         auto st = src_and_type(src);
+        if (policy == return_value_policy::_clif_automatic) {
+            policy = return_value_policy::copy;
+        }
         return type_caster_generic::cast(st.first,
                                          policy,
                                          parent,
                                          st.second,
                                          make_copy_constructor(src),
                                          make_move_constructor(src));
+    }
+
+    static handle cast(itype *src, return_value_policy policy, handle parent) {
+        if (policy == return_value_policy::_clif_automatic) {
+            if (parent) {
+                policy = return_value_policy::reference_internal;
+            } else {
+                policy = return_value_policy::reference;
+            }
+        }
+        return cast(const_cast<const itype *>(src), policy, parent); // Mutbl2Const
     }
 
     static handle cast_holder(const itype *src, const void *holder) {
