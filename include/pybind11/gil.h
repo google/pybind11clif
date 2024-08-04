@@ -151,9 +151,7 @@ public:
         // NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
         tstate = PyEval_SaveThread();
         if (disassoc) {
-            // Python >= 3.7 can remove this, it's an int before 3.7
-            // NOLINTNEXTLINE(readability-qualified-auto)
-            auto key = internals.tstate;
+            auto key = internals.tstate; // NOLINT(readability-qualified-auto)
             PYBIND11_TLS_DELETE_VALUE(key);
         }
     }
@@ -177,9 +175,7 @@ public:
             PyEval_RestoreThread(tstate);
         }
         if (disassoc) {
-            // Python >= 3.7 can remove this, it's an int before 3.7
-            // NOLINTNEXTLINE(readability-qualified-auto)
-            auto key = detail::get_internals().tstate;
+            auto key = detail::get_internals().tstate; // NOLINT(readability-qualified-auto)
             PYBIND11_TLS_REPLACE_VALUE(key, tstate);
         }
     }

@@ -57,7 +57,7 @@ extension will have link incompatibilities, which is often referred to as
 ODR violations. The behavior is entirely undefined. For better or worse, the
 extension may perform as desired for years, until one day it suddenly does
 not, because of some unrelated change in the environment (e.g. new compiler
-version, a system library update), resulting in seemingly inexplicable failures
+version, a system library update), resulting in seemingly inexplicable failures.
 
 See also: `pybind/pybind11#4022`_ (pybind11 smart_holder branch)
 

@@ -595,21 +595,23 @@ struct visit_helper {
 template <typename Variant>
 struct variant_caster;
 
+PYBIND11_WARNING_PUSH
+#if defined(__MINGW32__)
+PYBIND11_WARNING_DISABLE_GCC("-Wmaybe-uninitialized")
+#endif
+
 template <template <typename...> class V, typename... Ts>
 struct variant_caster<V<Ts...>> {
     static_assert(sizeof...(Ts) > 0, "Variant must consist of at least one alternative.");
 
     template <typename U, typename... Us>
     bool load_alternative(handle src, bool convert, type_list<U, Us...>) {
-        PYBIND11_WARNING_PUSH
-        PYBIND11_WARNING_DISABLE_GCC("-Wmaybe-uninitialized")
         auto caster = make_caster<U>();
         if (caster.load(src, convert)) {
             value = cast_op<U>(std::move(caster));
             return true;
         }
         return load_alternative(src, convert, type_list<Us...>{});
-        PYBIND11_WARNING_POP
     }
 
     bool load_alternative(handle, bool, type_list<>) { return false; }
@@ -636,6 +638,8 @@ struct variant_caster<V<Ts...>> {
                               ::pybind11::detail::const_name("Union[")
                                   + detail::concat(make_caster<Ts>::name...) + const_name("]"));
 };
+
+PYBIND11_WARNING_POP
 
 #if defined(PYBIND11_HAS_VARIANT)
 template <typename... Ts>
