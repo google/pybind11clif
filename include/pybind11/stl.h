@@ -159,7 +159,7 @@ private:
     void reserve_maybe(const anyset &, void *) {}
 
     bool convert_iterable(const iterable &itbl, bool convert) {
-        for (auto it : itbl) {
+        for (const auto &it : itbl) {
             key_conv conv;
             if (!conv.load(it, convert)) {
                 return false;
@@ -227,7 +227,7 @@ private:
     bool convert_elements(const dict &d, bool convert) {
         value.clear();
         reserve_maybe(d, &value);
-        for (auto it : d) {
+        for (const auto &it : d) {
             key_conv kconv;
             value_conv vconv;
             if (!kconv.load(it.first.ptr(), convert) || !vconv.load(it.second.ptr(), convert)) {
@@ -381,7 +381,7 @@ private:
     bool convert_elements(handle seq, bool convert) {
         auto l = reinterpret_borrow<sequence>(seq);
         value.reset(new ArrayType{});
-        // Using `resize` to preserve the behavior exactly as it was before google/pybind11k#30034
+        // Using `resize` to preserve the behavior exactly as it was before PR #5305
         // For the `resize` to work, `Value` must be default constructible.
         // For `std::valarray`, this is a requirement:
         // https://en.cppreference.com/w/cpp/named_req/NumericType
@@ -457,7 +457,7 @@ public:
     }
 
     // Code copied from PYBIND11_TYPE_CASTER macro.
-    // Intentionally preserving the behavior exactly as it was before google/pybind11k#30034
+    // Intentionally preserving the behavior exactly as it was before PR #5305
     template <typename T_, enable_if_t<std::is_same<ArrayType, remove_cv_t<T_>>::value, int> = 0>
     static handle cast(T_ *src, const return_value_policy_pack &policy, handle parent) {
         if (!src) {
