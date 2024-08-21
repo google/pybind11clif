@@ -985,8 +985,12 @@ public:
     using base::value;
 
     bool load(handle src, bool convert) {
-        return base::template load_impl<copyable_holder_caster<type, std::shared_ptr<type>>>(
-            src, convert);
+        if (base::template load_impl<copyable_holder_caster<type, std::shared_ptr<type>>>(
+                src, convert)) {
+            sh_load_helper.maybe_set_python_instance_is_alias(src);
+            return true;
+        }
+        return false;
     }
 
     explicit operator std::shared_ptr<type> *() {
@@ -1049,6 +1053,7 @@ protected:
     void load_value(value_and_holder &&v_h) {
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
             sh_load_helper.loaded_v_h = v_h;
+            sh_load_helper.was_populated = true;
             value = sh_load_helper.get_void_ptr_or_nullptr();
             return;
         }
@@ -1192,14 +1197,19 @@ public:
     }
 
     bool load(handle src, bool convert) {
-        return base::template load_impl<
-            move_only_holder_caster<type, std::unique_ptr<type, deleter>>>(src, convert);
+        if (base::template load_impl<
+                move_only_holder_caster<type, std::unique_ptr<type, deleter>>>(src, convert)) {
+            sh_load_helper.maybe_set_python_instance_is_alias(src);
+            return true;
+        }
+        return false;
     }
 
     void load_value(value_and_holder &&v_h) {
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
             sh_load_helper.loaded_v_h = v_h;
             sh_load_helper.loaded_v_h.type = typeinfo;
+            sh_load_helper.was_populated = true;
             value = sh_load_helper.get_void_ptr_or_nullptr();
             return;
         }
