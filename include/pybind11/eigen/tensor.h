@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include "../numpy.h"
+#include <pybind11/numpy.h>
+
 // IWYU pragma: begin_exports
 #include "common.h"
 // IWYU pragma: end_exports

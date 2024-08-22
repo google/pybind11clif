@@ -14,10 +14,10 @@
 #include "common.h"
 
 #if defined(PYBIND11_SIMPLE_GIL_MANAGEMENT)
-#    include "../gil.h"
+#    include <pybind11/gil.h>
 #endif
 
-#include "../pytypes.h"
+#include <pybind11/pytypes.h>
 
 #include <exception>
 #include <mutex>

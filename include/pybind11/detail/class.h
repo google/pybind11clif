@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include "../attr.h"
-#include "../options.h"
+#include <pybind11/attr.h>
+#include <pybind11/options.h>
 
 #include <cassert>
 #include <unordered_map>
