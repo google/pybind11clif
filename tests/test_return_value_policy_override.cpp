@@ -217,7 +217,7 @@ const char *return_value_policy_name(return_value_policy policy) {
         default:
             return "Expected to be unreachable.";
     }
-};
+}
 
 template <>
 struct type_caster<some_type> : type_caster_base<some_type> {
