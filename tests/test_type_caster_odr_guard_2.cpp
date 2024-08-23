@@ -44,7 +44,7 @@ inline void pass_vector_type_mrc(const std::vector<type_mrc> &) {}
 
 } // namespace mrc_ns
 
-PYBIND11_MAKE_OPAQUE(std::vector<mrc_ns::type_mrc>);
+PYBIND11_MAKE_OPAQUE(std::vector<mrc_ns::type_mrc>)
 
 namespace pybind11 {
 namespace detail {
