@@ -1002,7 +1002,7 @@ public:
             pybind11_fail("Passing `std::shared_ptr<T> *` from Python to C++ is not supported "
                           "(inherently unsafe).");
         }
-        return std::addressof(shared_ptr_holder);
+        return std::addressof(shared_ptr_storage);
     }
 
     explicit operator std::shared_ptr<type> &() {
@@ -1015,9 +1015,9 @@ public:
                 throw cast_error("Unowned pointer from a void pointer capsule cannot be converted "
                                  "to a std::shared_ptr.");
             }
-            shared_ptr_holder = sh_load_helper.load_as_shared_ptr(value);
+            shared_ptr_storage = sh_load_helper.load_as_shared_ptr(value);
         }
-        return shared_ptr_holder;
+        return shared_ptr_storage;
     }
 
     static handle
@@ -1063,7 +1063,7 @@ protected:
         }
         if (v_h.holder_constructed()) {
             value = v_h.value_ptr();
-            shared_ptr_holder = v_h.template holder<std::shared_ptr<type>>();
+            shared_ptr_storage = v_h.template holder<std::shared_ptr<type>>();
             return;
         }
         throw cast_error("Unable to cast from non-held to held instance (T& to Holder<T>) "
@@ -1092,8 +1092,8 @@ protected:
                 if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
                     sh_load_helper.loaded_v_h = sub_caster.sh_load_helper.loaded_v_h;
                 } else {
-                    shared_ptr_holder
-                        = std::shared_ptr<type>(sub_caster.shared_ptr_holder, (type *) value);
+                    shared_ptr_storage
+                        = std::shared_ptr<type>(sub_caster.shared_ptr_storage, (type *) value);
                 }
                 return true;
             }
@@ -1117,8 +1117,8 @@ protected:
         return false;
     }
 
-    std::shared_ptr<type> shared_ptr_holder;
     smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+    std::shared_ptr<type> shared_ptr_storage;
     bool from_direct_conversion = false;
     bool from_as_void_ptr_capsule = false;
 };
@@ -1195,7 +1195,7 @@ public:
             policy = return_value_policy::reference_internal;
         }
         if (policy != return_value_policy::reference_internal) {
-            throw cast_error("Invalid return_value_policy for unique_ptr&");
+            throw cast_error("Invalid return_value_policy for const unique_ptr&");
         }
         return type_caster_base<type>::cast(src.get(), policy, parent);
     }
@@ -1222,8 +1222,14 @@ public:
             + clean_type_id(typeinfo->cpptype->name()) + ")");
     }
 
-    template <typename>
-    using cast_op_type = std::unique_ptr<type, deleter>;
+    template <typename T_>
+    using cast_op_type
+        = conditional_t<std::is_same<typename std::remove_volatile<T_>::type,
+                                     const std::unique_ptr<type, deleter> &>::value
+                            || std::is_same<typename std::remove_volatile<T_>::type,
+                                            const std::unique_ptr<const type, deleter> &>::value,
+                        const std::unique_ptr<type, deleter> &,
+                        std::unique_ptr<type, deleter>>;
 
     explicit operator std::unique_ptr<type, deleter>() {
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
@@ -1236,6 +1242,28 @@ public:
                                  "to a std::unique_ptr.");
             }
             return sh_load_helper.template load_as_unique_ptr<deleter>(value);
+        }
+        pybind11_fail("Expected to be UNREACHABLE: " __FILE__ ":" PYBIND11_TOSTRING(__LINE__));
+    }
+
+    explicit operator const std::unique_ptr<type, deleter> &() {
+        if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
+            // Get shared_ptr to ensure that the Python object is not disowned elsewhere.
+            shared_ptr_storage = sh_load_helper.load_as_shared_ptr(value);
+            // Build a temporary unique_ptr that is meant to never expire.
+            unique_ptr_storage = std::shared_ptr<std::unique_ptr<type, deleter>>(
+                new std::unique_ptr<type, deleter>{
+                    sh_load_helper.template load_as_const_unique_ptr<deleter>(
+                        shared_ptr_storage.get())},
+                [](std::unique_ptr<type, deleter> *ptr) {
+                    if (!ptr) {
+                        pybind11_fail("FATAL: `const std::unique_ptr<T, D> &` was disowned "
+                                      "(EXPECT UNDEFINED BEHAVIOR).");
+                    }
+                    (void) ptr->release();
+                    delete ptr;
+                });
+            return *unique_ptr_storage;
         }
         pybind11_fail("Expected to be UNREACHABLE: " __FILE__ ":" PYBIND11_TOSTRING(__LINE__));
     }
@@ -1274,6 +1302,8 @@ public:
     }
 
     smart_holder_type_caster_support::load_helper<remove_cv_t<type>> sh_load_helper; // Const2Mutbl
+    std::shared_ptr<type> shared_ptr_storage; // Serves as a pseudo lock.
+    std::shared_ptr<std::unique_ptr<type, deleter>> unique_ptr_storage;
     bool from_direct_conversion = false;
     bool from_as_void_ptr_capsule = false;
 };
