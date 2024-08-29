@@ -1943,6 +1943,18 @@ struct arg : detail::arg_base {
     template <typename T>
     arg_v operator=(T &&value) const;
 
+    /// Same as `arg_base::noconvert()`, but returns *this as arg&, not arg_base&
+    arg &noconvert(bool flag = true) {
+        arg_base::noconvert(flag);
+        return *this;
+    }
+
+    /// Same as `arg_base::noconvert()`, but returns *this as arg&, not arg_base&
+    arg &none(bool flag = true) {
+        arg_base::none(flag);
+        return *this;
+    }
+
     arg &policies(const from_python_policies &policies) {
         m_policies = policies;
         return *this;
@@ -2010,6 +2022,12 @@ public:
     /// Same as `arg::nonone()`, but returns *this as arg_v&, not arg&
     arg_v &none(bool flag = true) {
         arg::none(flag);
+        return *this;
+    }
+
+    /// Same as `arg::policies()`, but returns *this as arg_v&, not arg&
+    arg_v &policies(const from_python_policies &policies) {
+        arg::policies(policies);
         return *this;
     }
 
