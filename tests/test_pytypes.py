@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import sys
 import types
@@ -65,6 +67,8 @@ def test_list(capture, doc):
     assert lins == [1, 83, 2]
     m.list_insert_size_t(lins)
     assert lins == [1, 83, 2, 57]
+    m.list_clear(lins)
+    assert lins == []
 
     with capture:
         lst = m.get_list()
@@ -631,7 +635,8 @@ def test_memoryview(method, args, fmt, expected_view):
     ],
 )
 def test_memoryview_refcount(method):
-    buf = b"\x0a\x0b\x0c\x0d"
+    # Avoiding a literal to avoid an immortal object in free-threaded builds
+    buf = "\x0a\x0b\x0c\x0d".encode("ascii")
     ref_before = sys.getrefcount(buf)
     view = method(buf)
     ref_after = sys.getrefcount(buf)
@@ -952,3 +957,136 @@ def test_fn_annotations(doc):
         doc(m.annotate_fn)
         == "annotate_fn(arg0: Callable[[list[str], str], int]) -> None"
     )
+
+
+def test_fn_return_only(doc):
+    assert (
+        doc(m.annotate_fn_only_return)
+        == "annotate_fn_only_return(arg0: Callable[..., int]) -> None"
+    )
+
+
+def test_type_annotation(doc):
+    assert doc(m.annotate_type) == "annotate_type(arg0: type[int]) -> type"
+
+
+def test_union_annotations(doc):
+    assert (
+        doc(m.annotate_union)
+        == "annotate_union(arg0: list[Union[str, int, object]], arg1: str, arg2: int, arg3: object) -> list[Union[str, int, object]]"
+    )
+
+
+def test_union_typing_only(doc):
+    assert (
+        doc(m.union_typing_only)
+        == "union_typing_only(arg0: list[Union[str]]) -> list[Union[int]]"
+    )
+
+
+def test_union_object_annotations(doc):
+    assert (
+        doc(m.annotate_union_to_object)
+        == "annotate_union_to_object(arg0: Union[int, str]) -> object"
+    )
+
+
+def test_optional_annotations(doc):
+    assert (
+        doc(m.annotate_optional)
+        == "annotate_optional(arg0: list) -> list[Optional[str]]"
+    )
+
+
+def test_type_guard_annotations(doc):
+    assert (
+        doc(m.annotate_type_guard)
+        == "annotate_type_guard(arg0: object) -> TypeGuard[str]"
+    )
+
+
+def test_type_is_annotations(doc):
+    assert doc(m.annotate_type_is) == "annotate_type_is(arg0: object) -> TypeIs[str]"
+
+
+def test_no_return_annotation(doc):
+    assert doc(m.annotate_no_return) == "annotate_no_return() -> NoReturn"
+
+
+def test_never_annotation(doc):
+    assert doc(m.annotate_never) == "annotate_never() -> Never"
+
+
+def test_optional_object_annotations(doc):
+    assert (
+        doc(m.annotate_optional_to_object)
+        == "annotate_optional_to_object(arg0: Optional[int]) -> object"
+    )
+
+
+@pytest.mark.skipif(
+    not m.defined_PYBIND11_TYPING_H_HAS_STRING_LITERAL,
+    reason="C++20 feature not available.",
+)
+def test_literal(doc):
+    assert (
+        doc(m.annotate_literal)
+        == 'annotate_literal(arg0: Literal[26, 0x1A, "hello world", b"hello world", u"hello world", True, Color.RED, None]) -> object'
+    )
+
+
+@pytest.mark.skipif(
+    not m.defined_PYBIND11_TYPING_H_HAS_STRING_LITERAL,
+    reason="C++20 feature not available.",
+)
+def test_typevar(doc):
+    assert (
+        doc(m.annotate_generic_containers)
+        == "annotate_generic_containers(arg0: list[T]) -> list[V]"
+    )
+
+    assert doc(m.annotate_listT_to_T) == "annotate_listT_to_T(arg0: list[T]) -> T"
+
+    assert doc(m.annotate_object_to_T) == "annotate_object_to_T(arg0: object) -> T"
+
+
+@pytest.mark.skipif(
+    not m.defined_PYBIND11_TEST_PYTYPES_HAS_RANGES,
+    reason="<ranges> not available.",
+)
+@pytest.mark.parametrize(
+    ("tested_tuple", "expected"),
+    [((1,), [2]), ((3, 4), [4, 5]), ((7, 8, 9), [8, 9, 10])],
+)
+def test_tuple_ranges(tested_tuple, expected):
+    assert m.tuple_iterator_default_initialization()
+    assert m.transform_tuple_plus_one(tested_tuple) == expected
+
+
+@pytest.mark.skipif(
+    not m.defined_PYBIND11_TEST_PYTYPES_HAS_RANGES,
+    reason="<ranges> not available.",
+)
+@pytest.mark.parametrize(
+    ("tested_list", "expected"), [([1], [2]), ([3, 4], [4, 5]), ([7, 8, 9], [8, 9, 10])]
+)
+def test_list_ranges(tested_list, expected):
+    assert m.list_iterator_default_initialization()
+    assert m.transform_list_plus_one(tested_list) == expected
+
+
+@pytest.mark.skipif(
+    not m.defined_PYBIND11_TEST_PYTYPES_HAS_RANGES,
+    reason="<ranges> not available.",
+)
+@pytest.mark.parametrize(
+    ("tested_dict", "expected"),
+    [
+        ({1: 2}, [(2, 3)]),
+        ({3: 4, 5: 6}, [(4, 5), (6, 7)]),
+        ({7: 8, 9: 10, 11: 12}, [(8, 9), (10, 11), (12, 13)]),
+    ],
+)
+def test_dict_ranges(tested_dict, expected):
+    assert m.dict_iterator_default_initialization()
+    assert m.transform_dict_plus_one(tested_dict) == expected

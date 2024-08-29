@@ -2,13 +2,14 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-// For background see the description of PR google/pywrapcc#30099.
+// For background see the description of PR google/pybind11clif#30099.
 
 #pragma once
 
 #include "../attr.h"
 #include "../pytypes.h"
 #include "common.h"
+#include "internals.h"
 
 #include <cstring>
 
@@ -45,7 +46,7 @@ PYBIND11_WARNING_POP
 // Note that this name is versioned.
 constexpr char tp_name_impl[]
     = "pybind11_detail_function_record_" PYBIND11_DETAIL_FUNCTION_RECORD_ABI_ID
-      "_" PYBIND11_PLATFORM_ABI_ID_V4;
+        PYBIND11_INTERNALS_ID;
 
 PYBIND11_NAMESPACE_END(function_record_PyTypeObject_methods)
 

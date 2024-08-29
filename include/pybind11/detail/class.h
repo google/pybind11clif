@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "../attr.h"
-#include "../options.h"
+#include <pybind11/attr.h>
+#include <pybind11/options.h>
 
 #include <cassert>
 #include <unordered_map>
@@ -198,7 +198,7 @@ inline bool ensure_base_init_functions_were_called(PyObject *self) {
     return true;
 }
 
-// See google/pywrapcc#30095 for background.
+// See google/pybind11clif#30095 for background.
 #if !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)                                \
     && !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
 #    if !defined(PYPY_VERSION)
@@ -232,39 +232,40 @@ extern "C" inline PyObject *pybind11_meta_call(PyObject *type, PyObject *args, P
 
 /// Cleanup the type-info for a pybind11-registered type.
 extern "C" inline void pybind11_meta_dealloc(PyObject *obj) {
-    auto *type = (PyTypeObject *) obj;
-    auto &internals = get_internals();
+    with_internals([obj](internals &internals) {
+        auto *type = (PyTypeObject *) obj;
 
-    // A pybind11-registered type will:
-    // 1) be found in internals.registered_types_py
-    // 2) have exactly one associated `detail::type_info`
-    auto found_type = internals.registered_types_py.find(type);
-    if (found_type != internals.registered_types_py.end() && found_type->second.size() == 1
-        && found_type->second[0]->type == type) {
+        // A pybind11-registered type will:
+        // 1) be found in internals.registered_types_py
+        // 2) have exactly one associated `detail::type_info`
+        auto found_type = internals.registered_types_py.find(type);
+        if (found_type != internals.registered_types_py.end() && found_type->second.size() == 1
+            && found_type->second[0]->type == type) {
 
-        auto *tinfo = found_type->second[0];
-        auto tindex = std::type_index(*tinfo->cpptype);
-        internals.direct_conversions.erase(tindex);
+            auto *tinfo = found_type->second[0];
+            auto tindex = std::type_index(*tinfo->cpptype);
+            internals.direct_conversions.erase(tindex);
 
-        if (tinfo->module_local) {
-            get_local_internals().registered_types_cpp.erase(tindex);
-        } else {
-            internals.registered_types_cpp.erase(tindex);
-        }
-        internals.registered_types_py.erase(tinfo->type);
-
-        // Actually just `std::erase_if`, but that's only available in C++20
-        auto &cache = internals.inactive_override_cache;
-        for (auto it = cache.begin(), last = cache.end(); it != last;) {
-            if (it->first == (PyObject *) tinfo->type) {
-                it = cache.erase(it);
+            if (tinfo->module_local) {
+                get_local_internals().registered_types_cpp.erase(tindex);
             } else {
-                ++it;
+                internals.registered_types_cpp.erase(tindex);
             }
-        }
+            internals.registered_types_py.erase(tinfo->type);
 
-        delete tinfo;
-    }
+            // Actually just `std::erase_if`, but that's only available in C++20
+            auto &cache = internals.inactive_override_cache;
+            for (auto it = cache.begin(), last = cache.end(); it != last;) {
+                if (it->first == (PyObject *) tinfo->type) {
+                    it = cache.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+
+            delete tinfo;
+        }
+    });
 
     PyType_Type.tp_dealloc(obj);
 }
@@ -339,19 +340,20 @@ inline void traverse_offset_bases(void *valueptr,
 }
 
 inline bool register_instance_impl(void *ptr, instance *self) {
-    get_internals().registered_instances.emplace(ptr, self);
+    with_instance_map(ptr, [&](instance_map &instances) { instances.emplace(ptr, self); });
     return true; // unused, but gives the same signature as the deregister func
 }
 inline bool deregister_instance_impl(void *ptr, instance *self) {
-    auto &registered_instances = get_internals().registered_instances;
-    auto range = registered_instances.equal_range(ptr);
-    for (auto it = range.first; it != range.second; ++it) {
-        if (self == it->second) {
-            registered_instances.erase(it);
-            return true;
+    return with_instance_map(ptr, [&](instance_map &instances) {
+        auto range = instances.equal_range(ptr);
+        for (auto it = range.first; it != range.second; ++it) {
+            if (self == it->second) {
+                instances.erase(it);
+                return true;
+            }
         }
-    }
-    return false;
+        return false;
+    });
 }
 
 inline void register_instance(instance *self, void *valptr, const type_info *tinfo) {
@@ -429,23 +431,32 @@ extern "C" inline int pybind11_object_init(PyObject *self, PyObject *, PyObject 
 }
 
 inline void add_patient(PyObject *nurse, PyObject *patient) {
-    auto &internals = get_internals();
     auto *instance = reinterpret_cast<detail::instance *>(nurse);
     instance->has_patients = true;
     Py_INCREF(patient);
-    internals.patients[nurse].push_back(patient);
+
+    with_internals([&](internals &internals) { internals.patients[nurse].push_back(patient); });
 }
 
 inline void clear_patients(PyObject *self) {
     auto *instance = reinterpret_cast<detail::instance *>(self);
-    auto &internals = get_internals();
-    auto pos = internals.patients.find(self);
-    assert(pos != internals.patients.end());
-    // Clearing the patients can cause more Python code to run, which
-    // can invalidate the iterator. Extract the vector of patients
-    // from the unordered_map first.
-    auto patients = std::move(pos->second);
-    internals.patients.erase(pos);
+    std::vector<PyObject *> patients;
+
+    with_internals([&](internals &internals) {
+        auto pos = internals.patients.find(self);
+
+        if (pos == internals.patients.end()) {
+            pybind11_fail(
+                "FATAL: Internal consistency check failed: Invalid clear_patients() call.");
+        }
+
+        // Clearing the patients can cause more Python code to run, which
+        // can invalidate the iterator. Extract the vector of patients
+        // from the unordered_map first.
+        patients = std::move(pos->second);
+        internals.patients.erase(pos);
+    });
+
     instance->has_patients = false;
     for (PyObject *&patient : patients) {
         Py_CLEAR(patient);
@@ -509,19 +520,9 @@ extern "C" inline void pybind11_object_dealloc(PyObject *self) {
 
     type->tp_free(self);
 
-#if PY_VERSION_HEX < 0x03080000
-    // `type->tp_dealloc != pybind11_object_dealloc` means that we're being called
-    // as part of a derived type's dealloc, in which case we're not allowed to decref
-    // the type here. For cross-module compatibility, we shouldn't compare directly
-    // with `pybind11_object_dealloc`, but with the common one stashed in internals.
-    auto pybind11_object_type = (PyTypeObject *) get_internals().instance_base;
-    if (type->tp_dealloc == pybind11_object_type->tp_dealloc)
-        Py_DECREF(type);
-#else
     // This was not needed before Python 3.8 (Python issue 35810)
     // https://github.com/pybind/pybind11/issues/1946
     Py_DECREF(type);
-#endif
 }
 
 std::string error_string();
@@ -610,17 +611,9 @@ inline void enable_dynamic_attributes(PyHeapTypeObject *heap_type) {
     type->tp_traverse = pybind11_traverse;
     type->tp_clear = pybind11_clear;
 
-    static PyGetSetDef getset[] = {{
-#if PY_VERSION_HEX < 0x03070000
-                                       const_cast<char *>("__dict__"),
-#else
-                                       "__dict__",
-#endif
-                                       PyObject_GenericGetDict,
-                                       PyObject_GenericSetDict,
-                                       nullptr,
-                                       nullptr},
-                                   {nullptr, nullptr, nullptr, nullptr, nullptr}};
+    static PyGetSetDef getset[]
+        = {{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict, nullptr, nullptr},
+           {nullptr, nullptr, nullptr, nullptr, nullptr}};
     type->tp_getset = getset;
 }
 
@@ -704,10 +697,13 @@ inline PyObject *make_new_python_type(const type_record &rec) {
 
     char *tp_doc = nullptr;
     if (rec.doc && options::show_user_defined_docstrings()) {
-        /* Allocate memory for docstring (using PyObject_MALLOC, since
-           Python will free this later on) */
+        /* Allocate memory for docstring (Python will free this later on) */
         size_t size = std::strlen(rec.doc) + 1;
+#if PY_VERSION_HEX >= 0x030D0000
+        tp_doc = (char *) PyMem_MALLOC(size);
+#else
         tp_doc = (char *) PyObject_MALLOC(size);
+#endif
         std::memcpy((void *) tp_doc, rec.doc, size);
     }
 

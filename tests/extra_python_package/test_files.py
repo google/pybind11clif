@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import string
@@ -7,7 +9,6 @@ import tarfile
 import zipfile
 
 # These tests must be run explicitly
-# They require CMake 3.15+ (--install)
 
 DIR = os.path.abspath(os.path.dirname(__file__))
 MAIN_DIR = os.path.dirname(os.path.dirname(DIR))
@@ -52,23 +53,21 @@ main_headers = {
 }
 
 detail_headers = {
-    "include/pybind11/detail/abi_platform_id.h",
     "include/pybind11/detail/class.h",
     "include/pybind11/detail/common.h",
-    "include/pybind11/detail/cross_extension_shared_state.h",
     "include/pybind11/detail/descr.h",
     "include/pybind11/detail/dynamic_raw_ptr_cast_if_possible.h",
     "include/pybind11/detail/function_record_pyobject.h",
     "include/pybind11/detail/init.h",
     "include/pybind11/detail/internals.h",
     "include/pybind11/detail/native_enum_data.h",
-    "include/pybind11/detail/smart_holder_poc.h",
-    "include/pybind11/detail/smart_holder_sfinae_hooks_only.h",
-    "include/pybind11/detail/smart_holder_type_casters.h",
+    "include/pybind11/detail/struct_smart_holder.h",
+    "include/pybind11/detail/try_as_void_ptr_capsule_get_pointer.h",
     "include/pybind11/detail/type_caster_base.h",
     "include/pybind11/detail/type_caster_odr_guard.h",
-    "include/pybind11/detail/type_map.h",
     "include/pybind11/detail/typeid.h",
+    "include/pybind11/detail/using_smart_holder.h",
+    "include/pybind11/detail/value_and_holder.h",
 }
 
 eigen_headers = {
@@ -86,6 +85,7 @@ cmake_files = {
     "share/cmake/pybind11/pybind11Common.cmake",
     "share/cmake/pybind11/pybind11Config.cmake",
     "share/cmake/pybind11/pybind11ConfigVersion.cmake",
+    "share/cmake/pybind11/pybind11GuessPythonExtSuffix.cmake",
     "share/cmake/pybind11/pybind11NewTools.cmake",
     "share/cmake/pybind11/pybind11Targets.cmake",
     "share/cmake/pybind11/pybind11Tools.cmake",

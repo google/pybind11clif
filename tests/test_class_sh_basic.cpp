@@ -120,6 +120,17 @@ std::string get_mtxt(atyp const &obj) { return obj.mtxt; }
 std::ptrdiff_t get_ptr(atyp const &obj) { return reinterpret_cast<std::ptrdiff_t>(&obj); }
 
 std::unique_ptr<atyp> unique_ptr_roundtrip(std::unique_ptr<atyp> obj) { return obj; }
+
+std::string pass_unique_ptr_cref(const std::unique_ptr<atyp> &obj) { return obj->mtxt; }
+
+const std::unique_ptr<atyp> &rtrn_unique_ptr_cref(const std::string &mtxt) {
+    static std::unique_ptr<atyp> obj{new atyp{"static_ctor_arg"}};
+    if (!mtxt.empty()) {
+        obj->mtxt = mtxt;
+    }
+    return obj;
+}
+
 const std::unique_ptr<atyp> &unique_ptr_cref_roundtrip(const std::unique_ptr<atyp> &obj) {
     return obj;
 }
@@ -145,6 +156,12 @@ namespace pybind11_tests {
 namespace class_sh_basic {
 
 TEST_SUBMODULE(class_sh_basic, m) {
+    m.attr("defined_PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT") =
+#ifndef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        false;
+#else
+        true;
+
     namespace py = pybind11;
 
     py::classh<atyp>(m, "atyp").def(py::init<>()).def(py::init([](const std::string &mtxt) {
@@ -211,6 +228,9 @@ TEST_SUBMODULE(class_sh_basic, m) {
     m.def("get_ptr", get_ptr);   // pass_cref
 
     m.def("unique_ptr_roundtrip", unique_ptr_roundtrip); // pass_uqmp, rtrn_uqmp
+
+    m.def("pass_unique_ptr_cref", pass_unique_ptr_cref);
+    m.def("rtrn_unique_ptr_cref", rtrn_unique_ptr_cref);
     m.def("unique_ptr_cref_roundtrip", unique_ptr_cref_roundtrip);
 
     py::classh<SharedPtrStash>(m, "SharedPtrStash")
@@ -233,11 +253,14 @@ TEST_SUBMODULE(class_sh_basic, m) {
         []() { return std::unique_ptr<atyp>(new atyp("rtrn_uq_automatic_reference")); },
         pybind11::return_value_policy::automatic_reference);
 
+    m.def("pass_shared_ptr_ptr", [](std::shared_ptr<atyp> *) {});
+
     py::classh<LocalUnusualOpRef>(m, "LocalUnusualOpRef");
     m.def("CallCastUnusualOpRefConstRef",
           []() { return CastUnusualOpRefConstRef(LocalUnusualOpRef()); });
     m.def("CallCastUnusualOpRefMovable",
           []() { return CastUnusualOpRefMovable(LocalUnusualOpRef()); });
+#endif // PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 }
 
 } // namespace class_sh_basic

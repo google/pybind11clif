@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from unittest import mock
 
 import pytest
 
 import env
-from pybind11_tests import ConstructorStats, UserType
+from pybind11_tests import PYBIND11_REFCNT_IMMORTAL, ConstructorStats, UserType
 from pybind11_tests import class_ as m
 
 
@@ -37,6 +39,18 @@ def test_instance_new():
     assert cstats.alive() == 1
     del instance
     assert cstats.alive() == 0
+
+
+def test_pass_unique_ptr():
+    obj = m.ToBeHeldByUniquePtr()
+    if m.pass_unique_ptr is None:
+        pytest.skip("smart_holder not available.")
+    with pytest.raises(RuntimeError) as execinfo:
+        m.pass_unique_ptr(obj)
+    assert str(execinfo.value).startswith(
+        "Passing `std::unique_ptr<T>` from Python to C++ requires `py::classh` (with T = "
+    )
+    assert "ToBeHeldByUniquePtr" in str(execinfo.value)
 
 
 def test_type():
@@ -377,7 +391,9 @@ def test_class_refcount():
         refcount_3 = getrefcount(cls)
 
         assert refcount_1 == refcount_3
-        assert refcount_2 > refcount_1
+        assert (refcount_2 > refcount_1) or (
+            refcount_2 == refcount_1 == PYBIND11_REFCNT_IMMORTAL
+        )
 
 
 def test_reentrant_implicit_conversion_failure(msg):

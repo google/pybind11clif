@@ -11,6 +11,9 @@
 #include "object.h"
 #include "pybind11_tests.h"
 
+// This breaks on PYBIND11_DECLARE_HOLDER_TYPE
+PYBIND11_WARNING_DISABLE_GCC("-Wpedantic")
+
 namespace {
 
 // This is just a wrapper around unique_ptr, but with extra fields to deliberately bloat up the
@@ -279,49 +282,13 @@ struct holder_helper<ref<T>> {
 } // namespace PYBIND11_NAMESPACE
 
 // Make pybind aware of the ref-counted wrapper type (s):
-PYBIND11_DECLARE_HOLDER_TYPE(T, ref<T>, true);
+PYBIND11_DECLARE_HOLDER_TYPE(T, ref<T>, true)
 // The following is not required anymore for std::shared_ptr, but it should compile without error:
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
-PYBIND11_DECLARE_HOLDER_TYPE(T, huge_unique_ptr<T>);
-PYBIND11_DECLARE_HOLDER_TYPE(T, custom_unique_ptr<T>);
-PYBIND11_DECLARE_HOLDER_TYPE(T, shared_ptr_with_addressof_operator<T>);
-PYBIND11_DECLARE_HOLDER_TYPE(T, unique_ptr_with_addressof_operator<T>);
-
-PYBIND11_TYPE_CASTER_BASE_HOLDER(Object, ref<Object>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject1, ref<MyObject1>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject2, std::shared_ptr<MyObject2>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject3, std::shared_ptr<MyObject3>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject4, std::unique_ptr<MyObject4, py::nodelete>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject4a, std::unique_ptr<MyObject4a, py::nodelete>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject4b, std::unique_ptr<MyObject4b>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(MyObject5, huge_unique_ptr<MyObject5>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(SharedPtrRef::A, std::shared_ptr<SharedPtrRef::A>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(SharedPtrRef, std::unique_ptr<SharedPtrRef>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(SharedFromThisRef::B, std::shared_ptr<SharedFromThisRef::B>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(SharedFromThisRef, std::unique_ptr<SharedFromThisRef>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(SharedFromThisVirt, std::shared_ptr<SharedFromThisVirt>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(C, custom_unique_ptr<C>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(TypeForHolderWithAddressOf,
-                                 shared_ptr_with_addressof_operator<TypeForHolderWithAddressOf>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(
-    TypeForMoveOnlyHolderWithAddressOf,
-    unique_ptr_with_addressof_operator<TypeForMoveOnlyHolderWithAddressOf>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(HeldByDefaultHolder, std::unique_ptr<HeldByDefaultHolder>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(ElementBase, std::shared_ptr<ElementBase>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(ElementA, std::shared_ptr<ElementA>)
-PYBIND11_TYPE_CASTER_BASE_HOLDER(ElementList, std::shared_ptr<ElementList>)
-
-#ifdef PYBIND11_USE_SMART_HOLDER_AS_DEFAULT
-// To prevent triggering a static_assert in the smart_holder code.
-// This is a very special case, because the associated test exercises a holder mismatch.
-namespace pybind11 {
-namespace detail {
-template <>
-class type_caster<std::shared_ptr<HeldByDefaultHolder>>
-    : public copyable_holder_caster<HeldByDefaultHolder, std::shared_ptr<HeldByDefaultHolder>> {};
-} // namespace detail
-} // namespace pybind11
-#endif
+PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>)
+PYBIND11_DECLARE_HOLDER_TYPE(T, huge_unique_ptr<T>)
+PYBIND11_DECLARE_HOLDER_TYPE(T, custom_unique_ptr<T>)
+PYBIND11_DECLARE_HOLDER_TYPE(T, shared_ptr_with_addressof_operator<T>)
+PYBIND11_DECLARE_HOLDER_TYPE(T, unique_ptr_with_addressof_operator<T>)
 
 TEST_SUBMODULE(smart_ptr, m) {
     // Please do not interleave `struct` and `class` definitions with bindings code,

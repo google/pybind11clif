@@ -10,7 +10,8 @@
 #include <string>
 #include <utility>
 
-namespace {
+namespace pybind11_tests {
+namespace class_sh_trampoline_self_life_support {
 
 struct Big5 { // Also known as "rule of five".
     std::string history;
@@ -37,15 +38,26 @@ protected:
     Big5() : history{"DefaultConstructor"} {}
 };
 
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 struct Big5Trampoline : Big5, py::trampoline_self_life_support {
     using Big5::Big5;
 };
+#endif
 
-} // namespace
+} // namespace class_sh_trampoline_self_life_support
+} // namespace pybind11_tests
+
+using namespace pybind11_tests::class_sh_trampoline_self_life_support;
 
 PYBIND11_SMART_HOLDER_TYPE_CASTERS(Big5)
 
 TEST_SUBMODULE(class_sh_trampoline_self_life_support, m) {
+    m.attr("defined_PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT") =
+#ifndef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        false;
+#else
+        true;
+
     py::classh<Big5, Big5Trampoline>(m, "Big5")
         .def(py::init<std::string>())
         .def_readonly("history", &Big5::history);
@@ -82,4 +94,5 @@ TEST_SUBMODULE(class_sh_trampoline_self_life_support, m) {
         py::object o1 = py::cast(std::move(obj));
         return py::make_tuple(o1, o2);
     });
+#endif // PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 }

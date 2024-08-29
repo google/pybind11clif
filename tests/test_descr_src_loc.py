@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from pybind11_tests import descr_src_loc as m
@@ -43,6 +45,11 @@ else:
 @pytest.mark.skipif(m.block_descr_offset is None, reason="Not enabled.")
 @pytest.mark.parametrize(("block_name", "expected_text_line"), block_parametrize)
 def test_block(block_name, expected_text_line):
+    if (
+        block_name == "block_underscore"
+        and not m.defined_PYBIND11_DETAIL_UNDERSCORE_BACKWARD_COMPATIBILITY
+    ):
+        pytest.skip("!defined(PYBIND11_DETAIL_UNDERSCORE_BACKWARD_COMPATIBILITY)")
     offset = getattr(m, f"{block_name}_offset")
     for ix, (expected_text, expected_line) in enumerate(expected_text_line):
         text, file, line = getattr(m, f"{block_name}_c{ix}")

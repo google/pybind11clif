@@ -110,6 +110,11 @@ TEST_SUBMODULE(descr_src_loc, m) {
     ATTR_BLKC(block_const_name, c6)
     ATTR_BLKC(block_const_name, c7)
 
+    m.attr("defined_PYBIND11_DETAIL_UNDERSCORE_BACKWARD_COMPATIBILITY") =
+#    if !defined(PYBIND11_DETAIL_UNDERSCORE_BACKWARD_COMPATIBILITY)
+        false;
+#    else
+        true;
     ATTR_OFFS(block_underscore)
     ATTR_BLKC(block_underscore, c0)
     ATTR_BLKC(block_underscore, c1)
@@ -119,6 +124,7 @@ TEST_SUBMODULE(descr_src_loc, m) {
     ATTR_BLKC(block_underscore, c5)
     ATTR_BLKC(block_underscore, c6)
     ATTR_BLKC(block_underscore, c7)
+#    endif
 
     ATTR_OFFS(block_plus)
     ATTR_BLKC(block_plus, c0)

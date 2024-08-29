@@ -8,7 +8,8 @@
 #include <memory>
 #include <string>
 
-namespace {
+namespace pybind11_tests {
+namespace class_sh_trampoline_shared_from_this {
 
 struct Sft : std::enable_shared_from_this<Sft> {
     std::string history;
@@ -70,9 +71,11 @@ struct SftSharedPtrStash {
     }
 };
 
+#ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 struct SftTrampoline : Sft, py::trampoline_self_life_support {
     using Sft::Sft;
 };
+#endif
 
 long use_count(const std::shared_ptr<Sft> &obj) { return obj.use_count(); }
 
@@ -84,7 +87,12 @@ long pass_shared_ptr(const std::shared_ptr<Sft> &obj) {
     return sft.use_count();
 }
 
-void pass_unique_ptr(const std::unique_ptr<Sft> &) {}
+std::string pass_unique_ptr_cref(const std::unique_ptr<Sft> &obj) {
+    return obj ? obj->history : "<NULLPTR>";
+}
+void pass_unique_ptr_rref(std::unique_ptr<Sft> &&) {
+    throw std::runtime_error("Expected to not be reached.");
+}
 
 Sft *make_pure_cpp_sft_raw_ptr(const std::string &history_seed) { return new Sft{history_seed}; }
 
@@ -98,12 +106,21 @@ std::shared_ptr<Sft> make_pure_cpp_sft_shd_ptr(const std::string &history_seed) 
 
 std::shared_ptr<Sft> pass_through_shd_ptr(const std::shared_ptr<Sft> &obj) { return obj; }
 
-} // namespace
+} // namespace class_sh_trampoline_shared_from_this
+} // namespace pybind11_tests
+
+using namespace pybind11_tests::class_sh_trampoline_shared_from_this;
 
 PYBIND11_SMART_HOLDER_TYPE_CASTERS(Sft)
 PYBIND11_SMART_HOLDER_TYPE_CASTERS(SftSharedPtrStash)
 
 TEST_SUBMODULE(class_sh_trampoline_shared_from_this, m) {
+    m.attr("defined_PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT") =
+#ifndef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
+        false;
+#else
+        true;
+
     py::classh<Sft, SftTrampoline>(m, "Sft")
         .def(py::init<const std::string &>())
         .def(py::init([](const std::string &history, int) {
@@ -123,9 +140,11 @@ TEST_SUBMODULE(class_sh_trampoline_shared_from_this, m) {
 
     m.def("use_count", use_count);
     m.def("pass_shared_ptr", pass_shared_ptr);
-    m.def("pass_unique_ptr", pass_unique_ptr);
+    m.def("pass_unique_ptr_cref", pass_unique_ptr_cref);
+    m.def("pass_unique_ptr_rref", pass_unique_ptr_rref);
     m.def("make_pure_cpp_sft_raw_ptr", make_pure_cpp_sft_raw_ptr);
     m.def("make_pure_cpp_sft_unq_ptr", make_pure_cpp_sft_unq_ptr);
     m.def("make_pure_cpp_sft_shd_ptr", make_pure_cpp_sft_shd_ptr);
     m.def("pass_through_shd_ptr", pass_through_shd_ptr);
+#endif // PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
 }

@@ -1,17 +1,11 @@
+from __future__ import annotations
+
 import enum
 import pickle
-import re
 
 import pytest
 
 from pybind11_tests import native_enum as m
-
-
-def test_abi_id():
-    assert re.match(
-        "__pybind11_native_enum_type_map_v1_.*__$", m.native_enum_type_map_abi_id_c_str
-    )
-
 
 SMALLENUM_MEMBERS = (
     ("a", 0),

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from pybind11_tests import return_value_policy_pack as m
@@ -335,3 +337,33 @@ def test_call_callback_pass_int_owner():
         return int_owner.val + 40
 
     assert m.call_callback_pass_int_owner_const_ptr(cb) == 543
+
+
+@pytest.mark.parametrize(
+    ("fn", "expected"),
+    [
+        (m.arg_chaining_noconvert_policies, b"\x80ArgNoconvertPolicies"),
+        (m.arg_chaining_none_policies, b"\x80ArgNonePolicies"),
+        (m.arg_chaining_policies_noconvert, b"\x80ArgPoliciesNoconvert"),
+    ],
+)
+def test_arg_chaining(fn, expected):
+    assert fn(lambda arg: arg + b"Extra") == expected + b"Extra"
+
+
+def test_arg_v_chaining_noconvert():
+    assert m.arg_v_chaining_noconvert() == 12
+    assert m.arg_v_chaining_noconvert(4) == 14
+
+
+def test_arg_v_chaining_none():
+    assert m.arg_v_chaining_none() == 23
+    assert m.arg_v_chaining_none(5) == 25
+
+
+def test_arg_v_chaining_none_policies():
+    assert m.arg_v_chaining_none_policies() == b"<NONE>"
+    assert (
+        m.arg_v_chaining_none_policies(lambda arg: arg + b"Extra")
+        == b"\x80ArgvNonePoliciesExtra"
+    )

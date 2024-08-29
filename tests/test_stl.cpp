@@ -59,7 +59,7 @@ struct visit_helper<boost::variant> {
 } // namespace PYBIND11_NAMESPACE
 #endif
 
-PYBIND11_MAKE_OPAQUE(std::vector<std::string, std::allocator<std::string>>);
+PYBIND11_MAKE_OPAQUE(std::vector<std::string, std::allocator<std::string>>)
 
 /// Issue #528: templated constructor
 struct TplCtorClass {
@@ -78,7 +78,7 @@ struct hash<TplCtorClass> {
 template <template <typename> class OptionalImpl, typename T>
 struct OptionalHolder {
     // NOLINTNEXTLINE(modernize-use-equals-default): breaks GCC 4.8
-    OptionalHolder(){};
+    OptionalHolder() {};
     bool member_initialized() const { return member && member->initialized; }
     OptionalImpl<T> member = T{};
 };

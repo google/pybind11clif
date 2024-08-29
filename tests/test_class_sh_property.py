@@ -1,10 +1,14 @@
 # The compact 4-character naming scheme (e.g. mptr, cptr, shcp) is explained at the top of
 # test_class_sh_property.cpp.
+from __future__ import annotations
 
 import pytest
 
 import env  # noqa: F401
 from pybind11_tests import class_sh_property as m
+
+if not m.defined_PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT:
+    pytest.skip("smart_holder not available.", allow_module_level=True)
 
 
 @pytest.mark.xfail("env.PYPY", reason="gc after `del field` is apparently deferred")
@@ -17,7 +21,7 @@ def test_valu_getter(m_attr):
     assert field.num == -99
     with pytest.raises(ValueError) as excinfo:
         m.DisownOuter(outer)
-    assert str(excinfo.value) == "Cannot disown use_count != 1 (loaded_as_unique_ptr)."
+    assert str(excinfo.value) == "Cannot disown use_count != 1 (load_as_unique_ptr)."
     del field
     m.DisownOuter(outer)
     with pytest.raises(ValueError, match="Python instance was disowned") as excinfo:
@@ -151,3 +155,13 @@ def test_unique_ptr_field_proxy_poc(m_attr):
     with pytest.raises(AttributeError):
         del field_proxy.num
     assert field_proxy.num == 82
+
+
+def test_readonly_char6_member():
+    obj = m.WithCharArrayMember()
+    assert obj.char6_member == "Char6"
+
+
+def test_readonly_const_char_ptr_member():
+    obj = m.WithConstCharPtrMember()
+    assert obj.const_char_ptr_member == "ConstChar*"
