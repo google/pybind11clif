@@ -436,4 +436,50 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
     py::class_<IntOwner>(m, "IntOwner").def_readonly("val", &IntOwner::val);
 
     m.def("call_callback_pass_int_owner_const_ptr", call_callback_pass_int_owner_const_ptr);
+
+    // Ensure chaining py::arg() member functions works.
+    m.def(
+        "arg_chaining_noconvert_policies",
+        [](const std::function<std::string(std::string)> &cb) {
+            return cb("\x80"
+                      "ArgNoconvertPolicies");
+        },
+        py::arg("cb").noconvert().policies(py::return_value_policy_pack({rvpb})),
+        rvpb);
+    m.def(
+        "arg_chaining_none_policies",
+        [](const std::function<std::string(std::string)> &cb) {
+            return cb("\x80"
+                      "ArgNonePolicies");
+        },
+        py::arg("cb").none().policies(py::return_value_policy_pack({rvpb})),
+        rvpb);
+    m.def(
+        "arg_chaining_policies_noconvert",
+        [](const std::function<std::string(std::string)> &cb) {
+            return cb("\x80"
+                      "ArgPoliciesNoconvert");
+        },
+        py::arg("cb").policies(py::return_value_policy_pack({rvpb})).noconvert(),
+        rvpb);
+
+    // Ensure chaining py::arg_v() member functions works.
+    // This does not look very useful, but .policies() chaining was added because
+    // chaining for .noconvert() and .none() existed already.
+    m.def(
+        "arg_v_chaining_noconvert",
+        [](int num) { return num + 10; },
+        (py::arg("num") = 2).noconvert());
+    m.def("arg_v_chaining_none", [](int num) { return num + 20; }, (py::arg("num") = 3).none());
+    m.def(
+        "arg_v_chaining_none_policies",
+        [](const std::function<std::string(std::string)> &cb) {
+            if (cb) {
+                return cb("\x80"
+                          "ArgvNonePolicies");
+            }
+            return std::string("<NONE>");
+        },
+        (py::arg("cb") = py::none()).policies(py::return_value_policy_pack({rvpb})),
+        rvpb);
 }
