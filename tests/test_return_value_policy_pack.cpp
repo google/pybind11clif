@@ -444,7 +444,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             return cb("\x80"
                       "ArgNoconvertPolicies");
         },
-        py::arg("cb").noconvert().policies(py::return_value_policy_pack({rvpb})),
+        py::arg("cb").noconvert().policies(py::return_value_policy_pack(rvpb)),
         rvpb);
     m.def(
         "arg_chaining_none_policies",
@@ -452,7 +452,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             return cb("\x80"
                       "ArgNonePolicies");
         },
-        py::arg("cb").none().policies(py::return_value_policy_pack({rvpb})),
+        py::arg("cb").none().policies(py::return_value_policy_pack(rvpb)),
         rvpb);
     m.def(
         "arg_chaining_policies_noconvert",
@@ -460,7 +460,7 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             return cb("\x80"
                       "ArgPoliciesNoconvert");
         },
-        py::arg("cb").policies(py::return_value_policy_pack({rvpb})).noconvert(),
+        py::arg("cb").policies(py::return_value_policy_pack(rvpb)).noconvert(),
         rvpb);
 
     // Ensure chaining py::arg_v() member functions works.
@@ -480,6 +480,6 @@ TEST_SUBMODULE(return_value_policy_pack, m) {
             }
             return std::string("<NONE>");
         },
-        (py::arg("cb") = py::none()).policies(py::return_value_policy_pack({rvpb})),
+        (py::arg("cb") = py::none()).policies(py::return_value_policy_pack(rvpb)),
         rvpb);
 }
