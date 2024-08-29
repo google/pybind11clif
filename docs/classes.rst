@@ -557,4 +557,4 @@ The ``name`` property returns the name of the enum value as a unicode string.
 .. note::
 
     ``py::native_enum`` was added as an alternative to ``py::enum_``
-    with http://github.com/google/pybind11k/pull/30005
+    with http://github.com/google/pybind11clif/pull/30005

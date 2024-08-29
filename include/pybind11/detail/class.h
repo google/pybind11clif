@@ -200,7 +200,7 @@ inline bool ensure_base_init_functions_were_called(PyObject *self) {
     return true;
 }
 
-// See google/pybind11k#30095 for background.
+// See google/pybind11clif#30095 for background.
 #if !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_INTERCEPTING_TP_INIT)                                \
     && !defined(PYBIND11_INIT_SAFETY_CHECKS_VIA_DEFAULT_PYBIND11_METACLASS)
 #    if !defined(PYPY_VERSION)
