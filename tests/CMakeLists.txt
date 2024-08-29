@@ -135,7 +135,6 @@ set(PYBIND11_TEST_FILES
     test_class_sh_unique_ptr_member
     test_class_sh_virtual_py_cpp_mix
     test_class_sh_void_ptr_capsule
-    test_classh_mock
     test_const_name
     test_constants_and_functions
     test_copy_move
@@ -182,7 +181,8 @@ set(PYBIND11_TEST_FILES
     test_unnamed_namespace_a
     test_unnamed_namespace_b
     test_vector_unique_ptr_member
-    test_virtual_functions)
+    test_virtual_functions
+    test_warnings)
 
 # Invoking cmake with something like:
 #     cmake -DPYBIND11_TEST_OVERRIDE="test_callbacks.cpp;test_pickling.cpp" ..
