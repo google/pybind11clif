@@ -134,11 +134,11 @@ public:
         return cpp_function(std::forward<Func>(f_), rvpp).release();
     }
 
-    PYBIND11_TYPE_CASTER(type,
-                         const_name("Callable[[")
-                             + ::pybind11::detail::concat(make_caster<Args>::name...)
-                             + const_name("], ") + make_caster<retval_type>::name
-                             + const_name("]"));
+    PYBIND11_TYPE_CASTER_RVPP(type,
+                              const_name("Callable[[")
+                                  + ::pybind11::detail::concat(make_caster<Args>::name...)
+                                  + const_name("], ") + make_caster<retval_type>::name
+                                  + const_name("]"));
 };
 
 PYBIND11_NAMESPACE_END(detail)
