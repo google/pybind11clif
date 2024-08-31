@@ -14,6 +14,7 @@
 #include <pybind11/trampoline_self_life_support.h>
 
 #include "common.h"
+#include "cpp_conduit.h"
 #include "descr.h"
 #include "dynamic_raw_ptr_cast_if_possible.h"
 #include "internals.h"
@@ -22,6 +23,8 @@
 #include "value_and_holder.h"
 
 #include <cstdint>
+#include <cstring>
+#include <exception>
 #include <iterator>
 #include <new>
 #include <string>
@@ -985,6 +988,13 @@ public:
         }
         return false;
     }
+    bool try_cpp_conduit(handle src) {
+        value = try_raw_pointer_ephemeral_from_cpp_conduit(src, cpptype);
+        if (value != nullptr) {
+            return true;
+        }
+        return false;
+    }
     void check_holder_compat() {}
 
     PYBIND11_NOINLINE static void *local_load(PyObject *src, const type_info *ti) {
@@ -1116,6 +1126,10 @@ public:
             return true;
         }
 
+        if (convert && cpptype && this_.try_cpp_conduit(src)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -1142,6 +1156,28 @@ public:
     const std::type_info *cpptype = nullptr;
     void *value = nullptr;
 };
+
+inline object class_dunder_cpp_conduit(handle self,
+                                       const str &pybind11_platform_abi_id,
+                                       const capsule &cap_cpp_type_info,
+                                       const str &pointer_kind) {
+    if (std::string(pybind11_platform_abi_id) != PYBIND11_PLATFORM_ABI_ID) {
+        return none();
+    }
+    if (std::strcmp(cap_cpp_type_info.name(), "const std::type_info *") != 0) {
+        return none();
+    }
+    std::string pointer_kind_cpp(pointer_kind);
+    if (pointer_kind_cpp != "raw_pointer_ephemeral") {
+        throw std::runtime_error("Invalid pointer_kind: \"" + pointer_kind_cpp + "\"");
+    }
+    const auto *cpp_type_info = cap_cpp_type_info.get_pointer<const std::type_info>();
+    type_caster_generic caster(*cpp_type_info);
+    if (!caster.load(self, false)) {
+        return none();
+    }
+    return capsule(caster.value, cpp_type_info->name());
+}
 
 /**
  * Determine suitable casting operator for pointer-or-lvalue-casting type casters.  The type caster

@@ -612,7 +612,8 @@ protected:
         int index = 0;
         /* Create a nice pydoc rec including all signatures and
            docstrings of the functions in the overload chain */
-        if (chain && options::show_function_signatures()) {
+        if (chain && options::show_function_signatures()
+            && strcmp(rec->name, "__cpp_conduit__") != 0) {
             // First a generic signature
             signatures += rec->name;
             signatures += "(*args, **kwargs)\n";
@@ -621,7 +622,7 @@ protected:
         // Then specific overload signatures
         bool first_user_def = true;
         for (auto *it = chain_start; it != nullptr; it = it->next) {
-            if (options::show_function_signatures()) {
+            if (options::show_function_signatures() && strcmp(rec->name, "__cpp_conduit__") != 0) {
                 if (index > 0) {
                     signatures += '\n';
                 }
@@ -1911,6 +1912,7 @@ public:
                     = instances[std::type_index(typeid(type))];
             });
         }
+        def("__cpp_conduit__", class_dunder_cpp_conduit);
     }
 
     template <typename Base, detail::enable_if_t<is_base<Base>::value, int> = 0>
