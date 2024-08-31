@@ -1,5 +1,7 @@
 // Copyright (c) 2024 The pybind Community.
 
+// IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
+
 #pragma once
 
 #include <pybind11/pytypes.h>
