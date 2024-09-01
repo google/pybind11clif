@@ -16,6 +16,7 @@
 #include <pybind11/trampoline_self_life_support.h>
 
 #include "common.h"
+#include "cpp_conduit.h"
 #include "descr.h"
 #include "dynamic_raw_ptr_cast_if_possible.h"
 #include "internals.h"
@@ -25,8 +26,10 @@
 #include "value_and_holder.h"
 
 #include <cstdint>
+#include <cstring>
 #include <iterator>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <typeindex>
@@ -995,6 +998,14 @@ public:
         }
         return false;
     }
+    bool try_cpp_conduit(handle src) {
+        value = try_raw_pointer_ephemeral_from_cpp_conduit(src, cpptype);
+        if (value != nullptr) {
+            return true;
+        }
+        return false;
+    }
+
     bool try_as_void_ptr_capsule(handle src) {
 #ifdef PYBIND11_HAS_INTERNALS_WITH_SMART_HOLDER_SUPPORT
         // The `as_void_ptr_capsule` feature is needed for PyCLIF-SWIG interoperability
@@ -1002,7 +1013,7 @@ public:
         // any safety checks. To lower the risk potential, the feature is activated
         // only if the smart_holder is used (PyCLIF-pybind11 uses `classh`).
         if (typeinfo->holder_enum_v == detail::holder_enum_t::smart_holder) {
-            value = try_as_void_ptr_capsule_get_pointer(src, cpptype->name());
+            value = pybind11clif::try_as_void_ptr_capsule_get_pointer(src, cpptype->name());
             if (value != nullptr) {
                 return true;
             }
@@ -1141,6 +1152,10 @@ public:
             return true;
         }
 
+        if (convert && cpptype && this_.try_cpp_conduit(src)) {
+            return true;
+        }
+
         if (convert && cpptype && this_.try_as_void_ptr_capsule(src)) {
             return true;
         }
@@ -1171,6 +1186,32 @@ public:
     const std::type_info *cpptype = nullptr;
     void *value = nullptr;
 };
+
+inline object cpp_conduit_method(handle self,
+                                 const bytes &pybind11_platform_abi_id,
+                                 const capsule &cpp_type_info_capsule,
+                                 const bytes &pointer_kind) {
+#ifdef PYBIND11_HAS_STRING_VIEW
+    using cpp_str = std::string_view;
+#else
+    using cpp_str = std::string;
+#endif
+    if (cpp_str(pybind11_platform_abi_id) != PYBIND11_PLATFORM_ABI_ID) {
+        return none();
+    }
+    if (std::strcmp(cpp_type_info_capsule.name(), typeid(std::type_info).name()) != 0) {
+        return none();
+    }
+    if (cpp_str(pointer_kind) != "raw_pointer_ephemeral") {
+        throw std::runtime_error("Invalid pointer_kind: \"" + std::string(pointer_kind) + "\"");
+    }
+    const auto *cpp_type_info = cpp_type_info_capsule.get_pointer<const std::type_info>();
+    type_caster_generic caster(*cpp_type_info);
+    if (!caster.load(self, false)) {
+        return none();
+    }
+    return capsule(caster.value, cpp_type_info->name());
+}
 
 /**
  * Determine suitable casting operator for pointer-or-lvalue-casting type casters.  The type caster

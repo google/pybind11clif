@@ -18,6 +18,12 @@
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 PYBIND11_NAMESPACE_BEGIN(detail)
 
+// Forward declaration needed here: Refactoring opportunity.
+extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *);
+
+// To avoid conflicts with PR pybind/pybind11#5296 before it is merged.
+PYBIND11_NAMESPACE_BEGIN(pybind11clif)
+
 // Replace all occurrences of substrings in a string.
 inline void replace_all(std::string &str, const std::string &from, const std::string &to) {
     if (str.empty()) {
@@ -29,9 +35,6 @@ inline void replace_all(std::string &str, const std::string &from, const std::st
         pos += to.length();
     }
 }
-
-// Forward declaration needed here: Refactoring opportunity.
-extern "C" inline PyObject *pybind11_object_new(PyTypeObject *type, PyObject *, PyObject *);
 
 inline bool type_is_pybind11_class_(PyTypeObject *type_obj) {
 #if defined(PYPY_VERSION)
@@ -88,5 +91,6 @@ inline void *try_as_void_ptr_capsule_get_pointer(handle src, const char *typeid_
 
 #define PYBIND11_HAS_TRY_AS_VOID_PTR_CAPSULE_GET_POINTER
 
+PYBIND11_NAMESPACE_END(pybind11clif)
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
