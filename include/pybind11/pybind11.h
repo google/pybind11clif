@@ -10,12 +10,14 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/class.h"
 #include "detail/dynamic_raw_ptr_cast_if_possible.h"
 #include "detail/function_record_pyobject.h"
 #include "detail/init.h"
 #include "detail/native_enum_data.h"
 #include "detail/using_smart_holder.h"
+// IWYU pragma: end_exports
 #include "attr.h"
 #include "gil.h"
 #include "gil_safe_call_once.h"

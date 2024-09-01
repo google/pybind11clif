@@ -10,7 +10,9 @@
 #pragma once
 
 #include "pybind11.h"
+// IWYU pragma: begin_exports
 #include "detail/common.h"
+// IWYU pragma: end_exports
 
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
 

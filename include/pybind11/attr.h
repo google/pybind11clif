@@ -10,7 +10,9 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/common.h"
+// IWYU pragma: end_exports
 #include "cast.h"
 
 #include <functional>

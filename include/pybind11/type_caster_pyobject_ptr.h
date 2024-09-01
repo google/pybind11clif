@@ -1,9 +1,13 @@
 // Copyright (c) 2023 The pybind Community.
 
+// IWYU pragma: always_keep // See pybind11/docs/type_caster_iwyu.rst
+
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/common.h"
 #include "detail/descr.h"
+// IWYU pragma: end_exports
 #include "cast.h"
 #include "pytypes.h"
 

@@ -4,9 +4,11 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/common.h"
 #include "detail/native_enum_data.h"
 #include "detail/type_caster_base.h"
+// IWYU pragma: end_exports
 #include "cast.h"
 
 #include <limits>

@@ -7,10 +7,14 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+// IWYU pragma: always_keep // See pybind11/docs/type_caster_iwyu.rst
+
 #pragma once
 
+// IWYU pragma: begin_exports
 #include "detail/common.h"
 #include "detail/type_caster_base.h"
+// IWYU pragma: end_exports
 #include "cast.h"
 #include "operators.h"
 

@@ -7,6 +7,8 @@
     BSD-style license that can be found in the LICENSE file.
 */
 
+// IWYU pragma: always_keep // See pybind11/docs/type_caster_iwyu.rst
+
 #pragma once
 
 #define PYBIND11_HAS_TYPE_CASTER_STD_FUNCTION_SPECIALIZATIONS

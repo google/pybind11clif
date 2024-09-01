@@ -5,6 +5,8 @@
 // in the Google-internal environment, but the current implementation is lacking
 // any safety checks.
 
+// IWYU pragma: private, include "third_party/pybind11/include/pybind11/pybind11.h"
+
 #pragma once
 
 #include "../pytypes.h"
